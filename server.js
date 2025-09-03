@@ -389,7 +389,7 @@ async function startServer() {
   await loadRestaurantData();
   
   // Start listening
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log('\n🚀 Nozawa Onsen Backend Server');
     console.log('='.repeat(40));
     console.log(`📡 Server running on http://localhost:${PORT}`);
