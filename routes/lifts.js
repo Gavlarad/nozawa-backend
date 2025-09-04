@@ -89,7 +89,43 @@ router.post('/scrape', async (req, res) => {
       error: 'Manual scrape failed',
       message: error.message 
     });
-  }
+    // Get scheduler and system status
+router.get('/status-info', (req, res) => {
+  const now = new Date();
+  const jst = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+  
+  // Check if we're in ski season
+  const month = jst.getMonth();
+  const day = jst.getDate();
+  const isSkiSeason = (month === 11 && day >= 10) ||  // Dec 10-31
+                      (month >= 0 && month <= 2) ||   // Jan-March
+                      (month === 3 && day <= 30);     // April 1-30
+  
+  res.json({
+    system: {
+      currentTimeUTC: now.toISOString(),
+      currentTimeJST: jst.toISOString(),
+      jstFormatted: jst.toLocaleString("en-US", {timeZone: "Asia/Tokyo"})
+    },
+    season: {
+      isCurrentlySkiSeason: isSkiSeason,
+      currentMonth: jst.toLocaleString('en-US', {month: 'long', timeZone: "Asia/Tokyo"}),
+      seasonDates: 'December 10 - April 30',
+      daysUntilSeason: !isSkiSeason ? 'Season ended or not started' : 'Currently in season'
+    },
+    cache: {
+      hasCachedData: !!cachedData,
+      cacheAge: cacheTime ? Math.floor((Date.now() - cacheTime) / 1000) + ' seconds' : 'No cache',
+      cacheExpired: cacheTime ? !isCacheFresh(10) : true,
+      lastScrapeTime: cachedData?.scrapedAt || null
+    },
+    endpoints: {
+      liveStatus: '/api/lifts/status',
+      testData: '/api/lifts/test',
+      manualScrape: '/api/lifts/scrape (POST with apiKey)',
+      statusInfo: '/api/lifts/status-info'
+    }
+  });
 });
 
 module.exports = router;
