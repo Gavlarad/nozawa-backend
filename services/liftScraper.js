@@ -26,6 +26,19 @@ class NozawaLiftScraper {
     };
   }
 
+  checkIfSkiSeason() {
+    const now = new Date();
+    const jstTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
+    const month = jstTime.getMonth(); // 0-11
+    const day = jstTime.getDate();
+    
+    // December 10 - April 30 (in JST)
+    // Month: 11 = December, 0 = January, 1 = Feb, 2 = March, 3 = April
+    return (month === 11 && day >= 10) ||  // Dec 10-31
+           (month >= 0 && month <= 2) ||   // All of Jan, Feb, March
+           (month === 3 && day <= 30);     // April 1-30
+  }
+  
   async scrape(options = {}) {
     const { forceRun = false } = options;
     
