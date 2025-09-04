@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const NozawaLiftScraper = require('../services/liftScraper');
+const scheduler = require('../services/scheduler');
 
 const scraper = new NozawaLiftScraper();
 let cachedData = null;
@@ -16,7 +17,17 @@ const isCacheFresh = (minutes = 10) => {
 // Get lift status
 router.get('/status', async (req, res) => {
   try {
-    // Return cache if fresh
+    // Check scheduler cache first
+    const schedulerData = scheduler.getLatestScrapeResults();
+    if (schedulerData && schedulerData.lifts) {
+      return res.json({
+        ...schedulerData,
+        cached: true,
+        source: 'scheduler'
+      });
+    }
+    
+    // Fallback to regular cache/scraping
     if (cachedData && isCacheFresh(10)) {
       return res.json({
         ...cachedData,
