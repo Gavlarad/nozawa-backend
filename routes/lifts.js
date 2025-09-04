@@ -59,12 +59,32 @@ router.get('/test', async (req, res) => {
 
 // Manual scrape endpoint
 router.post('/scrape', async (req, res) => {
+  const { apiKey } = req.body;
+  
+  // Check API key for security
+  const validKey = process.env.ADMIN_API_KEY || 'nozawa-admin-2024';
+  if (!apiKey || apiKey !== validKey) {
+    return res.status(401).json({ 
+      error: 'Unauthorized',
+      message: 'Valid API key required' 
+    });
+  }
+  
   try {
+    console.log('Manual scrape triggered with valid API key');
     const data = await scraper.scrape({ forceRun: true });
+    
+    // Update cache
     cachedData = data;
     cacheTime = Date.now();
-    res.json({ success: true, data });
+    
+    res.json({ 
+      success: true, 
+      message: 'Manual scrape completed',
+      data 
+    });
   } catch (error) {
+    console.error('Manual scrape failed:', error);
     res.status(500).json({ 
       error: 'Manual scrape failed',
       message: error.message 
