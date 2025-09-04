@@ -347,6 +347,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ============ LIFT STATUS ENDPOINTS ============
+
+// Add lift routes
+const liftRoutes = require('./routes/lifts');
+app.use('/api/lifts', liftRoutes);
+
 // ============ ROOT ENDPOINT ============
 
 app.get('/', (req, res) => {
