@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const NozawaLiftScraper = require('../services/liftScraper');
 const scheduler = require('../services/scheduler');
-
 const scraper = new NozawaLiftScraper();
 let cachedData = null;
 let cacheTime = null;
@@ -34,7 +33,7 @@ router.get('/status', async (req, res) => {
         cached: true
       });
     }
-
+    
     // Scrape new data
     const data = await scraper.scrape();
     
@@ -89,7 +88,10 @@ router.post('/scrape', async (req, res) => {
       error: 'Manual scrape failed',
       message: error.message 
     });
-    // Get scheduler and system status
+  }  // <- ADD THIS CLOSING BRACKET FOR CATCH
+});  // <- ADD THIS CLOSING BRACKET FOR /scrape ROUTE
+
+// Get scheduler and system status
 router.get('/status-info', (req, res) => {
   const now = new Date();
   const jst = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
