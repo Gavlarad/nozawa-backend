@@ -5,6 +5,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
 const path = require('path');
+const scheduler = require('./services/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -394,7 +395,10 @@ async function startServer() {
   // Load restaurant data
   await loadRestaurantData();
   
+  // Initialize lift scraping scheduler
+  scheduler.initializeScheduler();
   // Start listening
+  
   app.listen(PORT, () => {
     console.log('\n🚀 Nozawa Onsen Backend Server');
     console.log('='.repeat(40));
