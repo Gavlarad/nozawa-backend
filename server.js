@@ -423,21 +423,6 @@ app.get('/', (req, res) => {
 // ============ PLACES ENDPOINTS (NEW) ============
 
 // Get all places or filter by category
-app.get('/api/places', (req, res) => {
-  const { category, status = 'active' } = req.query;
-  
-  let filtered = placesData.filter(p => p.status === status);
-  
-  if (category) {
-    const categories = category.split(',');
-    filtered = filtered.filter(p => categories.includes(p.category));
-  }
-  
-  res.json({
-    count: filtered.length,
-    places: filtered
-  });
-});
 
 // ============ START SERVER ============
 
@@ -469,5 +454,22 @@ app.get('/api/debug', (req, res) => {
     placesDataLength: placesData.length,
     restaurantsDataLength: restaurantsData.length,
     firstPlace: placesData[0] || 'No places loaded'
+  });
+});
+
+// Get all places or filter by category
+app.get('/api/places', (req, res) => {
+  const { category } = req.query;
+  
+  let filtered = placesData;
+  
+  if (category) {
+    const categories = category.split(',');
+    filtered = filtered.filter(p => categories.includes(p.category));
+  }
+  
+  res.json({
+    count: filtered.length,
+    places: filtered
   });
 });
