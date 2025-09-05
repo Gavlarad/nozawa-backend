@@ -462,3 +462,12 @@ process.on('unhandledRejection', (error) => {
 });
 
 startServer();
+
+// Debug endpoint
+app.get('/api/debug', (req, res) => {
+  res.json({
+    placesDataLength: placesData.length,
+    restaurantsDataLength: restaurantsData.length,
+    firstPlace: placesData[0] || 'No places loaded'
+  });
+});
