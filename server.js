@@ -1,6 +1,4 @@
-// Nozawa Onsen Backend Server
-// Serves restaurant data and weather information
-
+// Nozawa Onsen Backend Server - Places Version
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
@@ -14,10 +12,57 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Load restaurant data into memory on startup
-let restaurantsData = [];
+// Data storage
+let placesData = [];
+let restaurantsData = []; // For backward compatibility
 let lastDataLoad = null;
 
+// Load places data into memory on startup
+async function loadPlacesData() {
+  try {
+    const dataPath = path.join(__dirname, 'nozawa_places_clean.json');
+    const rawData = await fs.readFile(dataPath, 'utf8');
+    const parsed = JSON.parse(rawData);
+    placesData = parsed.places || [];
+    
+    // Filter and transform restaurants for backward compatibility
+    restaurantsData = placesData
+      .filter(p => p.category === 'restaurant' && p.status === 'active')
+      .map(p => ({
+        // Flatten the structure for old endpoints
+        id: p.id,
+        google_place_id: p.google_data.place_id,
+        name: p.google_data.name,
+        rating: p.google_data.rating,
+        review_count: p.google_data.review_count,
+        price_range: p.google_data.price_range,
+        opening_hours: p.google_data.hours,
+        photos: p.google_data.photos,
+        coordinates: p.google_data.coordinates,
+        address: p.google_data.address,
+        phone: p.google_data.phone,
+        website: p.google_data.website,
+        google_maps_url: p.google_data.maps_url,
+        // Enhanced data
+        review_analysis: p.enhanced_data.review_analysis,
+        cuisine: p.enhanced_data.cuisine,
+        type: p.enhanced_data.cuisine,
+        budget: p.enhanced_data.budget,
+        english_menu: p.enhanced_data.english_menu,
+        credit_cards: p.enhanced_data.credit_cards,
+        vegetarian_friendly: p.enhanced_data.vegetarian_friendly
+      }));
+    
+    lastDataLoad = new Date();
+    console.log(`✅ Loaded ${placesData.length} places (${restaurantsData.length} active restaurants)`);
+  } catch (error) {
+    console.error('❌ Error loading places data:', error);
+    // Fallback to old restaurant file if places file doesn't exist
+    await loadRestaurantData();
+  }
+}
+
+// Fallback: Load old restaurant data format
 async function loadRestaurantData() {
   try {
     const dataPath = path.join(__dirname, 'nozawa_restaurants_enhanced.json');
@@ -25,7 +70,7 @@ async function loadRestaurantData() {
     const parsed = JSON.parse(rawData);
     restaurantsData = parsed.restaurants || [];
     lastDataLoad = new Date();
-    console.log(`✅ Loaded ${restaurantsData.length} restaurants`);
+    console.log(`✅ Loaded ${restaurantsData.length} restaurants (fallback mode)`);
   } catch (error) {
     console.error('❌ Error loading restaurant data:', error);
   }
@@ -55,19 +100,38 @@ function isRestaurantOpen(restaurant) {
   return false;
 }
 
-// Calculate distance between two coordinates (for proximity sorting)
+// Calculate distance between two coordinates
 function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c * 1000; // Return in meters
+  return R * c * 1000;
 }
 
-// ============ RESTAURANT ENDPOINTS ============
+// ============ PLACES ENDPOINTS (NEW) ============
+
+// Get all places or filter by category
+app.get('/api/places', (req, res) => {
+  const { category } = req.query;
+  
+  let filtered = placesData;
+  
+  if (category) {
+    const categories = category.split(',');
+    filtered = filtered.filter(p => categories.includes(p.category));
+  }
+  
+  res.json({
+    count: filtered.length,
+    places: filtered
+  });
+});
+
+// ============ RESTAURANT ENDPOINTS (BACKWARD COMPATIBLE) ============
 
 // Get all restaurants
 app.get('/api/restaurants', (req, res) => {
@@ -83,12 +147,10 @@ app.get('/api/restaurants', (req, res) => {
   
   let filtered = [...restaurantsData];
   
-  // Filter by open status
   if (open_now === 'true') {
     filtered = filtered.filter(r => isRestaurantOpen(r) === true);
   }
   
-  // Filter by cuisine type
   if (cuisine) {
     filtered = filtered.filter(r => 
       r.cuisine?.toLowerCase().includes(cuisine.toLowerCase()) ||
@@ -96,19 +158,16 @@ app.get('/api/restaurants', (req, res) => {
     );
   }
   
-  // Filter by price range
   if (price_range) {
     filtered = filtered.filter(r => r.price_range === price_range);
   }
   
-  // Filter by English menu mentions
   if (english_menu === 'true') {
     filtered = filtered.filter(r => 
       r.review_analysis?.insights?.mentions_english === true
     );
   }
   
-  // Sort by proximity if coordinates provided
   if (lat && lng) {
     const userLat = parseFloat(lat);
     const userLng = parseFloat(lng);
@@ -121,7 +180,6 @@ app.get('/api/restaurants', (req, res) => {
     })).sort((a, b) => a.distance - b.distance);
   }
   
-  // Apply limit
   filtered = filtered.slice(0, parseInt(limit));
   
   res.json({
@@ -153,21 +211,15 @@ app.get('/api/restaurants/stats', (req, res) => {
   let ratedCount = 0;
   
   restaurantsData.forEach(r => {
-    // Cuisine counts
     const cuisine = r.cuisine || r.type || 'Other';
     stats.by_cuisine[cuisine] = (stats.by_cuisine[cuisine] || 0) + 1;
     
-    // Price counts
     const price = r.price_range || 'Unknown';
     stats.by_price[price] = (stats.by_price[price] || 0) + 1;
     
-    // Photos
     if (r.photos && r.photos.length > 0) stats.with_photos++;
-    
-    // English mentions
     if (r.review_analysis?.insights?.mentions_english) stats.with_english_mentions++;
     
-    // Ratings
     if (r.rating) {
       totalRating += r.rating;
       ratedCount++;
@@ -202,7 +254,6 @@ app.get('/api/restaurants/:id', (req, res) => {
     return res.status(404).json({ error: 'Restaurant not found' });
   }
   
-  // Add current open status
   const enrichedRestaurant = {
     ...restaurant,
     is_open_now: isRestaurantOpen(restaurant)
@@ -213,7 +264,6 @@ app.get('/api/restaurants/:id', (req, res) => {
 
 // ============ WEATHER ENDPOINTS ============
 
-// Fetch weather from OpenMeteo
 async function fetchWeatherData() {
   const fetch = (await import('node-fetch')).default;
   
@@ -252,12 +302,10 @@ async function fetchWeatherData() {
   }
 }
 
-// Get current weather for all elevations
 app.get('/api/weather/current', async (req, res) => {
   try {
     const weatherData = await fetchWeatherData();
     
-    // Calculate snow line
     let snowLine = 'Unknown';
     const village = weatherData[0].current.temperature_2m;
     const summit = weatherData[2].current.temperature_2m;
@@ -285,12 +333,10 @@ app.get('/api/weather/current', async (req, res) => {
   }
 });
 
-// Get weather forecast
 app.get('/api/weather/forecast', async (req, res) => {
   try {
     const weatherData = await fetchWeatherData();
     
-    // Format forecast for next 7 days
     const forecast = weatherData.map(level => ({
       location: level.location,
       elevation: level.elevation,
@@ -318,19 +364,18 @@ app.get('/api/weather/forecast', async (req, res) => {
 
 // ============ ADMIN ENDPOINTS ============
 
-// Reload restaurant data without restarting server
 app.post('/api/admin/reload-data', async (req, res) => {
-  // Simple auth check - in production, use proper authentication
   const { admin_key } = req.body;
   
   if (admin_key !== 'nozawa2024') {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
-  await loadRestaurantData();
+  await loadPlacesData();
   
   res.json({
     success: true,
+    places_loaded: placesData.length,
     restaurants_loaded: restaurantsData.length,
     timestamp: lastDataLoad
   });
@@ -341,6 +386,7 @@ app.post('/api/admin/reload-data', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
+    places_loaded: placesData.length,
     restaurants_loaded: restaurantsData.length,
     data_loaded_at: lastDataLoad,
     server_time: new Date().toISOString(),
@@ -348,9 +394,18 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ============ DEBUG ENDPOINT ============
+
+app.get('/api/debug', (req, res) => {
+  res.json({
+    placesDataLength: placesData.length,
+    restaurantsDataLength: restaurantsData.length,
+    firstPlace: placesData[0] || 'No places loaded'
+  });
+});
+
 // ============ LIFT STATUS ENDPOINTS ============
 
-// Add lift routes
 const liftRoutes = require('./routes/lifts');
 app.use('/api/lifts', liftRoutes);
 
@@ -359,8 +414,12 @@ app.use('/api/lifts', liftRoutes);
 app.get('/', (req, res) => {
   res.json({
     name: 'Nozawa Onsen API',
-    version: '1.0.0',
+    version: '2.0.0',
     endpoints: {
+      places: {
+        'GET /api/places': 'Get all places',
+        'GET /api/places?category=restaurant': 'Get places by category'
+      },
       restaurants: {
         'GET /api/restaurants': 'Get all restaurants with filters',
         'GET /api/restaurants/:id': 'Get single restaurant',
@@ -371,20 +430,16 @@ app.get('/', (req, res) => {
         'GET /api/weather/current': 'Current conditions at 3 elevations',
         'GET /api/weather/forecast': '7-day forecast'
       },
+      lifts: {
+        'GET /api/lifts/status': 'Get lift status'
+      },
       admin: {
-        'POST /api/admin/reload-data': 'Reload restaurant data'
+        'POST /api/admin/reload-data': 'Reload places data'
       },
       health: {
-        'GET /api/health': 'Server health check'
+        'GET /api/health': 'Server health check',
+        'GET /api/debug': 'Debug information'
       }
-    },
-    filters_available: {
-      open_now: 'true/false',
-      cuisine: 'Japanese, Ramen, etc.',
-      price_range: '¥, ¥¥, ¥¥¥, ¥¥¥¥',
-      english_menu: 'true/false',
-      lat: 'User latitude for proximity sort',
-      lng: 'User longitude for proximity sort'
     }
   });
 });
@@ -392,50 +447,23 @@ app.get('/', (req, res) => {
 // ============ START SERVER ============
 
 async function startServer() {
-  // Load restaurant data
-  await loadRestaurantData();
-  
-  // Initialize lift scraping scheduler
+  await loadPlacesData();
   scheduler.initializeScheduler();
-  // Start listening
   
   app.listen(PORT, () => {
     console.log('\n🚀 Nozawa Onsen Backend Server');
     console.log('='.repeat(40));
     console.log(`📡 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Loaded ${restaurantsData.length} restaurants`);
-    console.log(`🌡️  Weather API connected to OpenMeteo`);
+    console.log(`📊 Loaded ${placesData.length} total places`);
+    console.log(`🍴 ${restaurantsData.length} active restaurants`);
+    console.log(`🌡️  Weather API connected`);
+    console.log(`🎿 Lift status monitoring active`);
     console.log('='.repeat(40));
-    console.log('\n📝 Available endpoints:');
-    console.log('  GET  /api/restaurants');
-    console.log('  GET  /api/restaurants/status/open');
-    console.log('  GET  /api/weather/current');
-    console.log('\n');
   });
 }
 
-// Handle errors
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled Promise Rejection:', error);
 });
 
-// Start the server
 startServer();
-
-// Places endpoint - working version
-app.get('/api/places', (req, res) => {
-  const { category } = req.query;
-  
-  // Use the already loaded placesData
-  let filtered = [...placesData];
-  
-  if (category) {
-    const categories = category.split(',');
-    filtered = filtered.filter(p => categories.includes(p.category));
-  }
-  
-  res.json({
-    count: filtered.length,
-    places: filtered
-  });
-});
