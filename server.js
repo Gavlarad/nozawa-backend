@@ -1,6 +1,4 @@
-// Nozawa Onsen Backend Server
-// Serves restaurant data and weather information
-
+// Nozawa Onsen Backend Server - Places Version
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
@@ -14,23 +12,54 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Load restaurant data into memory on startup
-let restaurantsData = [];
+// Load places data into memory on startup
+let placesData = [];
+let restaurantsData = []; // Backward compatibility
 let lastDataLoad = null;
 
-async function loadRestaurantData() {
+async function loadPlacesData() {
   try {
-    const dataPath = path.join(__dirname, 'nozawa_restaurants_enhanced.json');
+    const dataPath = path.join(__dirname, 'nozawa_places_clean.json');
     const rawData = await fs.readFile(dataPath, 'utf8');
     const parsed = JSON.parse(rawData);
-    restaurantsData = parsed.restaurants || [];
+    placesData = parsed.places || [];
+    
+    // Filter restaurants for backward compatibility
+    restaurantsData = placesData
+      .filter(p => p.category === 'restaurant' && p.status === 'active')
+      .map(p => ({
+        // Map back to old structure for existing endpoints
+        id: p.id,
+        google_place_id: p.google_data.place_id,
+        name: p.google_data.name,
+        rating: p.google_data.rating,
+        review_count: p.google_data.review_count,
+        price_range: p.google_data.price_range,
+        opening_hours: p.google_data.hours,
+        photos: p.google_data.photos,
+        coordinates: p.google_data.coordinates,
+        address: p.google_data.address,
+        phone: p.google_data.phone,
+        website: p.google_data.website,
+        google_maps_url: p.google_data.maps_url,
+        // Enhanced data
+        review_analysis: p.enhanced_data.review_analysis,
+        cuisine: p.enhanced_data.cuisine,
+        budget: p.enhanced_data.budget,
+        english_menu: p.enhanced_data.english_menu,
+        credit_cards: p.enhanced_data.credit_cards,
+        vegetarian_friendly: p.enhanced_data.vegetarian_friendly,
+        // Type fields
+        type: p.subcategory,
+        cuisine: p.enhanced_data.cuisine || p.subcategory
+      }));
+    
     lastDataLoad = new Date();
-    console.log(`✅ Loaded ${restaurantsData.length} restaurants`);
+    console.log(`✅ Loaded ${placesData.length} places (${restaurantsData.length} restaurants)`);
   } catch (error) {
-    console.error('❌ Error loading restaurant data:', error);
+    console.error('❌ Error loading places data:', error);
   }
 }
-
 // Helper function to check if restaurant is currently open
 function isRestaurantOpen(restaurant) {
   if (!restaurant.opening_hours?.periods) return null;
@@ -391,33 +420,45 @@ app.get('/', (req, res) => {
 
 // ============ START SERVER ============
 
-async function startServer() {
-  // Load restaurant data
-  await loadRestaurantData();
+// ============ PLACES ENDPOINTS (NEW) ============
+
+// Get all places or filter by category
+app.get('/api/places', (req, res) => {
+  const { category, status = 'active' } = req.query;
   
-  // Initialize lift scraping scheduler
+  let filtered = placesData.filter(p => p.status === status);
+  
+  if (category) {
+    const categories = category.split(',');
+    filtered = filtered.filter(p => categories.includes(p.category));
+  }
+  
+  res.json({
+    count: filtered.length,
+    places: filtered
+  });
+});
+
+// ============ START SERVER ============
+
+async function startServer() {
+  await loadPlacesData();
   scheduler.initializeScheduler();
-  // Start listening
   
   app.listen(PORT, () => {
     console.log('\n🚀 Nozawa Onsen Backend Server');
     console.log('='.repeat(40));
     console.log(`📡 Server running on http://localhost:${PORT}`);
-    console.log(`📊 Loaded ${restaurantsData.length} restaurants`);
-    console.log(`🌡️  Weather API connected to OpenMeteo`);
+    console.log(`📊 Loaded ${placesData.length} total places`);
+    console.log(`🍴 ${restaurantsData.length} active restaurants`);
+    console.log(`🌡️  Weather API connected`);
+    console.log(`🎿 Lift status monitoring active`);
     console.log('='.repeat(40));
-    console.log('\n📝 Available endpoints:');
-    console.log('  GET  /api/restaurants');
-    console.log('  GET  /api/restaurants/status/open');
-    console.log('  GET  /api/weather/current');
-    console.log('\n');
   });
 }
 
-// Handle errors
 process.on('unhandledRejection', (error) => {
   console.error('Unhandled Promise Rejection:', error);
 });
 
-// Start the server
 startServer();
