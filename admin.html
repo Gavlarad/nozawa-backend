@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nozawa Data Admin</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .header {
+            background: #2563eb;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .tab.active {
+            background: #2563eb;
+            color: white;
+        }
+        .content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .item {
+            border: 1px solid #e5e5e5;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .item-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        .field {
+            margin-bottom: 10px;
+        }
+        .field label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #374151;
+            font-size: 13px;
+        }
+        .field input, .field textarea, .field select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+        .field textarea {
+            min-height: 60px;
+            resize: vertical;
+        }
+        .coordinates {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 5px;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-success {
+            background: #16a34a;
+            color: white;
+        }
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+        .actions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e5e5;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .hidden {
+            display: none;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            display: block;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            display: block;
+        }
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #1e40af;
+        }
+        .info-box code {
+            background: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Nozawa Onsen Data Manager</h1>
+        <p>Simple JSON editor for restaurants and onsens</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('restaurants')">Restaurants</button>
+        <button class="tab" onclick="switchTab('onsens')">Onsens</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="info-box">
+        <h3>📁 File Management</h3>
+        <p><strong>Important:</strong> This tool edits data in your browser's memory only. To save permanently:</p>
+        <ol>
+            <li>Click "Download JSON" to save the file</li>
+            <li>Save it as: <code>nozawa_restaurants_enhanced.json</code> or <code>nozawa_onsens_enhanced.json</code></li>
+            <li>Place in your <code>nozawa-backend</code> folder</li>
+            <li>To edit existing data: Click "Upload JSON" and select your file first</li>
+        </ol>
+    </div>
+
+    <div class="content">
+        <div id="restaurants-section">
+            <h2>Restaurants (<span id="restaurant-count">0</span>)</h2>
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="addItem('restaurant')">+ Add Restaurant</button>
+                <button class="btn btn-warning" onclick="document.getElementById('restaurantFileInput').click()">📂 Upload Existing JSON</button>
+                <input type="file" id="restaurantFileInput" class="hidden" accept=".json" onchange="uploadJSON(event, 'restaurants')">
+            </div>
+            <div id="restaurants-list"></div>
+        </div>
+
+        <div id="onsens-section" class="hidden">
+            <h2>Onsens (<span id="onsen-count">0</span>)</h2>
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="addItem('onsen')">+ Add Onsen</button>
+                <button class="btn btn-warning" onclick="document.getElementById('onsenFileInput').click()">📂 Upload Existing JSON</button>
+                <input type="file" id="onsenFileInput" class="hidden" accept=".json" onchange="uploadJSON(event, 'onsens')">
+            </div>
+            <div id="onsens-list"></div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-success" onclick="downloadJSON()">⬇️ Download JSON</button>
+            <button class="btn btn-primary" onclick="clearAll()">🗑️ Clear All</button>
+        </div>
+    </div>
+
+    <script>
+        let restaurantsData = { restaurants: [] };
+        let onsensData = { onsens: [] };
+        let currentTab = 'restaurants';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'restaurants') {
+                document.getElementById('restaurants-section').classList.remove('hidden');
+                document.getElementById('onsens-section').classList.add('hidden');
+            } else {
+                document.getElementById('restaurants-section').classList.add('hidden');
+                document.getElementById('onsens-section').classList.remove('hidden');
+            }
+            updateCounts();
+        }
+
+        function updateCounts() {
+            document.getElementById('restaurant-count').textContent = restaurantsData.restaurants.length;
+            document.getElementById('onsen-count').textContent = onsensData.onsens.length;
+        }
+
+        function renderList() {
+            if (currentTab === 'restaurants') {
+                renderRestaurants();
+            } else {
+                renderOnsens();
+            }
+            updateCounts();
+        }
+
+        function renderRestaurants() {
+            const list = document.getElementById('restaurants-list');
+            list.innerHTML = '';
+            
+            restaurantsData.restaurants.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-title">${item.name || 'Unnamed Restaurant'}</div>
+                        <button class="btn btn-danger" onclick="deleteItem('restaurants', ${index})">🗑️ Delete</button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label>Name (English)</label>
+                            <input type="text" value="${item.name || ''}" onchange="updateField('restaurants', ${index}, 'name', this.value)">
+                        </div>
+                        <div class="field">
+                            <label>Name (Japanese)</label>
+                            <input type="text" value="${item.name_jp || ''}" onchange="updateField('restaurants', ${index}, 'name_jp', this.value)">
+                        </div>
+                        <div class="field">
+                            <label>Cuisine Type</label>
+                            <input type="text" value="${item.cuisine || ''}" onchange="updateField('restaurants', ${index}, 'cuisine', this.value)">
+                        </div>
+                        <div class="field">
+                            <label>Price Range</label>
+                            <select onchange="updateField('restaurants', ${index}, 'price_range', this.value)">
+                                <option value="">Select...</option>
+                                <option value="¥" ${item.price_range === '¥' ? 'selected' : ''}>¥ (Budget)</option>
+                                <option value="¥¥" ${item.price_range === '¥¥' ? 'selected' : ''}>¥¥ (Moderate)</option>
+                                <option value="¥¥¥" ${item.price_range === '¥¥¥' ? 'selected' : ''}>¥¥¥ (Expensive)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>📍 Coordinates</label>
+                        <div class="coordinates">
+                            <input type="number" step="0.000001" placeholder="Latitude" value="${item.location?.lat || ''}" onchange="updateCoordinate('restaurants', ${index}, 'lat', this.value)">
+                            <input type="number" step="0.000001" placeholder="Longitude" value="${item.location?.lng || ''}" onchange="updateCoordinate('restaurants', ${index}, 'lng', this.value)">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Address</label>
+                        <input type="text" value="${item.location?.address || item.address || ''}" onchange="updateAddress('restaurants', ${index}, this.value)">
+                    </div>
+                    <div class="field">
+                        <label>Hours</label>
+                        <input type="text" placeholder="e.g., Mon-Sun: 11:30 AM - 10:00 PM" value="${item.hours || ''}" onchange="updateField('restaurants', ${index}, 'hours', this.value)">
+                    </div>
+                    <div class="field">
+                        <label>Local Tips</label>
+                        <textarea onchange="updateField('restaurants', ${index}, 'local_tips', this.value)">${item.local_tips || ''}</textarea>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function renderOnsens() {
+            const list = document.getElementById('onsens-list');
+            list.innerHTML = '';
+            
+            onsensData.onsens.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `
+                    <div class="item-header">
+                        <div class="item-title">${item.name || 'Unnamed Onsen'}</div>
+                        <button class="btn btn-danger" onclick="deleteItem('onsens', ${index})">🗑️ Delete</button>
+                    </div>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label>Name (English)</label>
+                            <input type="text" value="${item.name || ''}" onchange="updateField('onsens', ${index}, 'name', this.value)">
+                        </div>
+                        <div class="field">
+                            <label>Name (Japanese)</label>
+                            <input type="text" value="${item.name_jp || ''}" onchange="updateField('onsens', ${index}, 'name_jp', this.value)">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>📍 Coordinates</label>
+                        <div class="coordinates">
+                            <input type="number" step="0.000001" placeholder="Latitude" value="${item.location?.lat || ''}" onchange="updateCoordinate('onsens', ${index}, 'lat', this.value)">
+                            <input type="number" step="0.000001" placeholder="Longitude" value="${item.location?.lng || ''}" onchange="updateCoordinate('onsens', ${index}, 'lng', this.value)">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Address</label>
+                        <input type="text" value="${item.location?.address || ''}" onchange="updateAddress('onsens', ${index}, this.value)">
+                    </div>
+                    <div class="grid-2">
+                        <div class="field">
+                            <label>Temperature</label>
+                            <select onchange="updateNestedField('onsens', ${index}, 'local_info.temperature', this.value)">
+                                <option value="">Select temperature</option>
+                                <option value="Moderate (38-40°C)" ${item.local_info?.temperature === 'Moderate (38-40°C)' ? 'selected' : ''}>Moderate (38-40°C)</option>
+                                <option value="Hot (40-42°C)" ${item.local_info?.temperature === 'Hot (40-42°C)' ? 'selected' : ''}>Hot (40-42°C)</option>
+                                <option value="Very hot (42-44°C)" ${item.local_info?.temperature === 'Very hot (42-44°C)' ? 'selected' : ''}>Very hot (42-44°C)</option>
+                                <option value="Boiling (90°C)" ${item.local_info?.temperature === 'Boiling (90°C)' ? 'selected' : ''}>Boiling (90°C) - NOT for bathing!</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Entrance Fee</label>
+                            <input type="text" placeholder="e.g., Free (donation box)" value="${item.local_info?.entrance_fee || ''}" onchange="updateNestedField('onsens', ${index}, 'local_info.entrance_fee', this.value)">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Hours</label>
+                        <input type="text" placeholder="e.g., Daily: 6:00 AM - 11:00 PM" value="${item.hours?.weekday_text?.[0] || ''}" onchange="updateHours('onsens', ${index}, this.value)">
+                    </div>
+                    <div class="field">
+                        <label>Description</label>
+                        <textarea onchange="updateField('onsens', ${index}, 'description', this.value)">${item.description || ''}</textarea>
+                    </div>
+                    <div class="field">
+                        <label>Etiquette Notes</label>
+                        <textarea onchange="updateNestedField('onsens', ${index}, 'local_info.etiquette_notes', this.value)">${item.local_info?.etiquette_notes || ''}</textarea>
+                    </div>
+                    <div class="field">
+                        <label>Local Tips</label>
+                        <textarea onchange="updateNestedField('onsens', ${index}, 'local_info.local_tips', this.value)">${item.local_info?.local_tips || ''}</textarea>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function updateField(type, index, field, value) {
+            const data = type === 'restaurants' ? restaurantsData : onsensData;
+            data[type][index][field] = value;
+            showStatus('Updated!', 'success');
+        }
+
+        function updateCoordinate(type, index, coord, value) {
+            const data = type === 'restaurants' ? restaurantsData : onsensData;
+            if (!data[type][index].location) {
+                data[type][index].location = {};
+            }
+            data[type][index].location[coord] = parseFloat(value) || 0;
+            showStatus('Coordinates updated!', 'success');
+        }
+
+        function updateAddress(type, index, value) {
+            const data = type === 'restaurants' ? restaurantsData : onsensData;
+            if (!data[type][index].location) {
+                data[type][index].location = {};
+            }
+            data[type][index].location.address = value;
+            // Also update root level address for restaurants
+            if (type === 'restaurants') {
+                data[type][index].address = value;
+            }
+            showStatus('Address updated!', 'success');
+        }
+
+        function updateNestedField(type, index, path, value) {
+            const data = type === 'restaurants' ? restaurantsData : onsensData;
+            const parts = path.split('.');
+            let obj = data[type][index];
+            
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (!obj[parts[i]]) obj[parts[i]] = {};
+                obj = obj[parts[i]];
+            }
+            
+            obj[parts[parts.length - 1]] = value;
+            showStatus('Updated!', 'success');
+        }
+
+        function updateHours(type, index, value) {
+            const data = type === 'restaurants' ? restaurantsData : onsensData;
+            if (!data[type][index].hours) data[type][index].hours = {};
+            data[type][index].hours.weekday_text = [value];
+            showStatus('Hours updated!', 'success');
+        }
+
+        function addItem(type) {
+            if (type === 'restaurant') {
+                restaurantsData.restaurants.push({
+                    name: 'New Restaurant',
+                    category: 'restaurant',
+                    name_jp: '',
+                    cuisine: '',
+                    price_range: '¥¥',
+                    location: {
+                        lat: 36.92309,  // Default to village center
+                        lng: 138.44644,
+                        address: 'Nozawa Onsen, Nagano'
+                    },
+                    hours: '',
+                    local_tips: ''
+                });
+                renderRestaurants();
+            } else {
+                onsensData.onsens.push({
+                    name: 'New Onsen',
+                    category: 'onsen',
+                    name_jp: '',
+                    location: {
+                        lat: 36.92309,  // Default to village center
+                        lng: 138.44644,
+                        address: 'Nozawa Onsen Village, Shimotakai District, Nagano 389-2502'
+                    },
+                    hours: { weekday_text: ['Daily: 6:00 AM - 11:00 PM'] },
+                    local_info: {
+                        entrance_fee: 'Free (donation box)',
+                        temperature: 'Hot (40-42°C)',
+                        etiquette_notes: '',
+                        local_tips: ''
+                    }
+                });
+                renderOnsens();
+            }
+            updateCounts();
+            showStatus('Item added!', 'success');
+        }
+
+        function deleteItem(type, index) {
+            if (confirm('Are you sure you want to delete this item?')) {
+                const data = type === 'restaurants' ? restaurantsData : onsensData;
+                data[type].splice(index, 1);
+                renderList();
+                showStatus('Item deleted!', 'success');
+            }
+        }
+
+        function downloadJSON() {
+            const data = currentTab === 'restaurants' ? restaurantsData : onsensData;
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nozawa_${currentTab}_enhanced.json`;
+            a.click();
+            showStatus(`Downloaded as nozawa_${currentTab}_enhanced.json`, 'success');
+        }
+
+        function uploadJSON(event, type) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (type === 'restaurants') {
+                            restaurantsData = data;
+                            currentTab = 'restaurants';
+                        } else {
+                            onsensData = data;
+                            currentTab = 'onsens';
+                        }
+                        renderList();
+                        showStatus(`Loaded ${type === 'restaurants' ? restaurantsData.restaurants.length : onsensData.onsens.length} items from JSON file!`, 'success');
+                    } catch (error) {
+                        showStatus('Error parsing JSON file! Check console for details.', 'error');
+                        console.error('JSON Parse Error:', error);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Clear all data in current tab? This cannot be undone!')) {
+                if (currentTab === 'restaurants') {
+                    restaurantsData = { restaurants: [] };
+                } else {
+                    onsensData = { onsens: [] };
+                }
+                renderList();
+                showStatus('All data cleared!', 'success');
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            setTimeout(() => {
+                status.className = 'status';
+            }, 3000);
+        }
+
+        // Initialize on load
+        updateCounts();
+    </script>
+</body>
+</html>

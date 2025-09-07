@@ -1,0 +1,228 @@
+{
+  "location": "Nozawa Onsen",
+  "generated_at": "2025-09-07T22:28:02.749Z",
+  "total_onsens": 13,
+  "onsens": [
+    {
+      "id": "nozawa_oyu",
+      "name": "Oyu (Big Bath)",
+      "name_jp": "大湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9242,
+        "lng": 138.4502,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "The symbol of Nozawa Onsen and the most famous of the 13 public baths.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Very hot (42-44°C)",
+        "local_tips": "The hottest and most popular. Try early morning for quieter experience."
+      }
+    },
+    {
+      "id": "nozawa_kawaharayu",
+      "name": "Kawaharayu",
+      "name_jp": "河原湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9238,
+        "lng": 138.4498,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Located near the river, known for its therapeutic waters.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Slightly cooler than Oyu, good for those who find Oyu too hot."
+      }
+    },
+    {
+      "id": "nozawa_kumanotearayu",
+      "name": "Kumanotearayu (Bear's Paw Bath)",
+      "name_jp": "熊の手洗湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9215,
+        "lng": 138.4512,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Named after a legend of a bear washing its injured paw here.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "One of the quieter baths, good for relaxation."
+      }
+    },
+    {
+      "id": "nozawa_akihanoyu",
+      "name": "Akiha-no-yu",
+      "name_jp": "秋葉の湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9228,
+        "lng": 138.4495,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Located near Akiha shrine, popular with locals.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Popular with locals who come daily."
+      }
+    },
+    {
+      "id": "nozawa_juodonoyu",
+      "name": "Juodo-no-yu",
+      "name_jp": "十王堂の湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9212,
+        "lng": 138.4508,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "One of the larger public baths with good facilities.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Spacious compared to other public baths."
+      }
+    },
+    {
+      "id": "nozawa_matsubanoyu",
+      "name": "Matsuba-no-yu",
+      "name_jp": "松葉の湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9195,
+        "lng": 138.452,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Pine Needle Bath - located in quieter area of village.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "One of the quieter, more peaceful baths."
+      }
+    },
+    {
+      "id": "nozawa_nakanoyu",
+      "name": "Naka-no-yu (Middle Bath)",
+      "name_jp": "中尾の湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9202,
+        "lng": 138.4515,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Centrally located bath, moderate temperature makes it popular.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Moderate (38-40°C)",
+        "local_tips": "Good for those who find other baths too hot."
+      }
+    },
+    {
+      "id": "nozawa_shinyu",
+      "name": "Shin-yu (New Bath)",
+      "name_jp": "新湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9188,
+        "lng": 138.4525,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Despite the name, this is not new - renovated traditional bath.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Nice facilities after renovation."
+      }
+    },
+    {
+      "id": "nozawa_kaminoyu",
+      "name": "Kami-no-yu (Upper Temple Bath)",
+      "name_jp": "上寺湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9245,
+        "lng": 138.4488,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Located in upper part of village near temple area.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Peaceful location near temple area."
+      }
+    },
+    {
+      "id": "nozawa_shimonoyu",
+      "name": "Shimo-no-yu (Lower Temple Bath)",
+      "name_jp": "下寺湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9235,
+        "lng": 138.4492,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Located in lower part of village, pair to Kami-no-yu.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Sister bath to Kami-no-yu."
+      }
+    },
+    {
+      "id": "nozawa_yokochinoyu",
+      "name": "Yokochi-no-yu",
+      "name_jp": "横落の湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9218,
+        "lng": 138.4505,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Known for unique architecture and peaceful atmosphere.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Hidden gem, less known to tourists."
+      }
+    },
+    {
+      "id": "nozawa_takinoyu",
+      "name": "Taki-no-yu (Waterfall Bath)",
+      "name_jp": "滝の湯",
+      "category": "onsen",
+      "location": {
+        "lat": 36.9198,
+        "lng": 138.4518,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Named after nearby waterfall, one of the most scenic locations.",
+      "local_info": {
+        "entrance_fee": "Free (donation box available)",
+        "temperature": "Hot (40-42°C)",
+        "local_tips": "Beautiful location, worth the walk."
+      }
+    },
+    {
+      "id": "nozawa_ogama",
+      "name": "Ogama (Cooking Onsen)",
+      "name_jp": "麻釜",
+      "category": "onsen",
+      "location": {
+        "lat": 36.924,
+        "lng": 138.45,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "description": "Not for bathing! Used by villagers to cook vegetables and eggs in the 90°C water.",
+      "local_info": {
+        "entrance_fee": "Free to view",
+        "temperature": "Boiling (90°C)",
+        "local_tips": "Great photo spot. Watch locals cooking vegetables. Do not touch water!"
+      }
+    }
+  ]
+}
