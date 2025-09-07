@@ -1,58 +1,67 @@
-// Nozawa Onsen Backend Server
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
 const scheduler = require('./services/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Data storage
+// Load restaurant data
 let restaurantsData = [];
 let lastDataLoad = null;
 
-// Load restaurant data
-async function loadRestaurantData() {
+function loadRestaurantData() {
   try {
     const dataPath = path.join(__dirname, 'nozawa_restaurants_enhanced.json');
-    const rawData = await fs.readFile(dataPath, 'utf8');
-    const parsed = JSON.parse(rawData);
-    restaurantsData = parsed.restaurants || [];
-    lastDataLoad = new Date();
-    console.log(`✅ Loaded ${restaurantsData.length} restaurants`);
+    const rawData = fs.readFileSync(dataPath, 'utf8');
+    const data = JSON.parse(rawData);
+    restaurantsData = data.restaurants || [];
+    lastDataLoad = new Date().toISOString();
+    console.log(`Loaded ${restaurantsData.length} restaurants at ${lastDataLoad}`);
   } catch (error) {
-    console.error('❌ Error loading restaurant data:', error);
+    console.error('Error loading restaurant data:', error);
+    restaurantsData = [];
   }
 }
 
-// Helper functions
-function isRestaurantOpen(restaurant) {
-  if (!restaurant.opening_hours?.periods) return null;
-  
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const currentTime = now.getHours() * 100 + now.getMinutes();
-  
-  const periods = restaurant.opening_hours.periods;
-  
-  for (const period of periods) {
-    if (period.open?.day === dayOfWeek) {
-      const openTime = parseInt(period.open.time);
-      const closeTime = period.close ? parseInt(period.close.time) : 2359;
-      
-      if (currentTime >= openTime && currentTime <= closeTime) {
-        return true;
-      }
+// NEW: UNIFIED PLACES ENDPOINT
+app.get('/api/places', (req, res) => {
+  try {
+    const placesData = JSON.parse(fs.readFileSync('./nozawa_places_unified.json', 'utf8'));
+    let places = placesData.places || [];
+    
+    // Filter by category if requested
+    const { category } = req.query;
+    if (category) {
+      const categories = category.split(',');
+      places = places.filter(p => categories.includes(p.category));
     }
+    
+    res.json({ 
+      places,
+      total_count: places.length 
+    });
+  } catch (error) {
+    console.error('Error loading places:', error);
+    res.status(500).json({ error: 'Failed to load places data' });
+  }
+});
+
+// Helper function to check if restaurant is open
+function isRestaurantOpen(restaurant) {
+  if (!restaurant.opening_hours || !restaurant.opening_hours.periods) {
+    return null;
   }
   
-  return false;
+  // Implementation continues...
 }
 
+// Helper function to calculate distance
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -63,6 +72,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c * 1000;
 }
+
 
 // MAIN RESTAURANTS/PLACES ENDPOINT
 app.get('/api/restaurants', (req, res) => {
