@@ -3,538 +3,777 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nozawa Data Admin</title>
+    <title>Nozawa Places Admin</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 1200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
         }
+
         .header {
-            background: #2563eb;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        .tabs {
+
+        .header h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat {
+            background: #f7fafc;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #e53e3e;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .filter-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            align-items: center;
+            margin-left: auto;
         }
-        .tab {
-            padding: 10px 20px;
-            background: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .tab.active {
-            background: #2563eb;
-            color: white;
-        }
-        .content {
-            background: white;
-            padding: 20px;
+
+        .filter-select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
             border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
         }
-        .item {
-            border: 1px solid #e5e5e5;
-            padding: 15px;
+
+        .search-input {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        .places-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .place-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .place-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        .place-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
             margin-bottom: 15px;
-            border-radius: 5px;
-            background: #fafafa;
         }
-        .item-header {
+
+        .place-title {
+            flex: 1;
+        }
+
+        .place-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+
+        .place-name-jp {
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .category-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .category-restaurant {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .category-onsen {
+            background: #fed7d7;
+            color: #822727;
+        }
+
+        .category-service {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .category-accommodation {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        .place-details {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .detail-row {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+            min-width: 100px;
+        }
+
+        .detail-value {
+            color: #718096;
+            flex: 1;
+        }
+
+        .place-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e5e5e5;
+            margin-bottom: 20px;
         }
-        .item-title {
-            font-size: 18px;
+
+        .modal-title {
+            font-size: 24px;
             font-weight: bold;
-            color: #1f2937;
+            color: #2d3748;
         }
-        .field {
-            margin-bottom: 10px;
+
+        .modal-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: #f7fafc;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #718096;
         }
-        .field label {
+
+        .modal-close:hover {
+            background: #e2e8f0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
             display: block;
+            margin-bottom: 8px;
             font-weight: 600;
-            margin-bottom: 5px;
-            color: #374151;
-            font-size: 13px;
-        }
-        .field input, .field textarea, .field select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
+            color: #4a5568;
             font-size: 14px;
-            background: white;
         }
-        .field textarea {
-            min-height: 60px;
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-textarea {
+            min-height: 100px;
             resize: vertical;
         }
-        .coordinates {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 5px;
-        }
-        .btn-primary {
-            background: #2563eb;
-            color: white;
-        }
-        .btn-danger {
-            background: #dc2626;
-            color: white;
-        }
-        .btn-success {
-            background: #16a34a;
-            color: white;
-        }
-        .btn-warning {
-            background: #f59e0b;
-            color: white;
-        }
-        .actions {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e5e5e5;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .hidden {
-            display: none;
-        }
-        .grid-2 {
+
+        .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
         }
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            display: none;
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
         }
-        .status.success {
-            background: #d1fae5;
-            color: #065f46;
-            display: block;
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
         }
-        .status.error {
-            background: #fee2e2;
-            color: #991b1b;
-            display: block;
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
         }
-        .info-box {
-            background: #eff6ff;
-            border: 1px solid #3b82f6;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .info-box h3 {
-            margin-top: 0;
-            color: #1e40af;
-        }
-        .info-box code {
+
+        .empty-state {
             background: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
+            border-radius: 12px;
+            padding: 60px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .empty-state h2 {
+            color: #718096;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: #a0aec0;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Nozawa Onsen Data Manager</h1>
-        <p>Simple JSON editor for restaurants and onsens</p>
-    </div>
-
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('restaurants')">Restaurants</button>
-        <button class="tab" onclick="switchTab('onsens')">Onsens</button>
-    </div>
-
-    <div id="status" class="status"></div>
-
-    <div class="info-box">
-        <h3>📁 File Management</h3>
-        <p><strong>Important:</strong> This tool edits data in your browser's memory only. To save permanently:</p>
-        <ol>
-            <li>Click "Download JSON" to save the file</li>
-            <li>Save it as: <code>nozawa_restaurants_enhanced.json</code> or <code>nozawa_onsens_enhanced.json</code></li>
-            <li>Place in your <code>nozawa-backend</code> folder</li>
-            <li>To edit existing data: Click "Upload JSON" and select your file first</li>
-        </ol>
-    </div>
-
-    <div class="content">
-        <div id="restaurants-section">
-            <h2>Restaurants (<span id="restaurant-count">0</span>)</h2>
-            <div style="margin-bottom: 20px;">
-                <button class="btn btn-primary" onclick="addItem('restaurant')">+ Add Restaurant</button>
-                <button class="btn btn-warning" onclick="document.getElementById('restaurantFileInput').click()">📂 Upload Existing JSON</button>
-                <input type="file" id="restaurantFileInput" class="hidden" accept=".json" onchange="uploadJSON(event, 'restaurants')">
+    <div class="container">
+        <div class="header">
+            <h1>🗾 Nozawa Places Admin</h1>
+            <p style="color: #718096;">Manage restaurants, onsens, and services for the Nozawa Onsen app</p>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number" id="totalCount">0</div>
+                    <div class="stat-label">Total Places</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="restaurantCount">0</div>
+                    <div class="stat-label">Restaurants</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="onsenCount">0</div>
+                    <div class="stat-label">Onsens</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="serviceCount">0</div>
+                    <div class="stat-label">Services</div>
+                </div>
             </div>
-            <div id="restaurants-list"></div>
         </div>
 
-        <div id="onsens-section" class="hidden">
-            <h2>Onsens (<span id="onsen-count">0</span>)</h2>
-            <div style="margin-bottom: 20px;">
-                <button class="btn btn-primary" onclick="addItem('onsen')">+ Add Onsen</button>
-                <button class="btn btn-warning" onclick="document.getElementById('onsenFileInput').click()">📂 Upload Existing JSON</button>
-                <input type="file" id="onsenFileInput" class="hidden" accept=".json" onchange="uploadJSON(event, 'onsens')">
+        <div class="controls">
+            <div class="file-input-wrapper">
+                <label for="fileInput" class="btn btn-primary" style="margin: 0; cursor: pointer;">
+                    📁 Load JSON File
+                </label>
+                <input type="file" class="file-input" id="fileInput" accept=".json">
             </div>
-            <div id="onsens-list"></div>
+            <button class="btn btn-success" id="addButton" onclick="showAddModal()">
+                ➕ Add New Place
+            </button>
+            <button class="btn btn-secondary" onclick="downloadJSON()">
+                💾 Download JSON
+            </button>
+            
+            <div class="filter-group">
+                <select class="filter-select" id="categoryFilter" onchange="filterPlaces()">
+                    <option value="all">All Categories</option>
+                    <option value="restaurant">Restaurants</option>
+                    <option value="onsen">Onsens</option>
+                    <option value="service">Services</option>
+                    <option value="accommodation">Accommodation</option>
+                </select>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search places..." oninput="filterPlaces()">
+            </div>
         </div>
 
-        <div class="actions">
-            <button class="btn btn-success" onclick="downloadJSON()">⬇️ Download JSON</button>
-            <button class="btn btn-primary" onclick="clearAll()">🗑️ Clear All</button>
+        <div id="placesContainer">
+            <div class="empty-state">
+                <h2>No data loaded</h2>
+                <p>Load a JSON file to start managing places</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal" id="placeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Add New Place</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            
+            <form id="placeForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Name (English) *</label>
+                        <input type="text" class="form-input" id="placeName" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Name (Japanese)</label>
+                        <input type="text" class="form-input" id="placeNameJp">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Category *</label>
+                        <select class="form-select" id="placeCategory" required>
+                            <option value="restaurant">Restaurant</option>
+                            <option value="onsen">Onsen</option>
+                            <option value="service">Service</option>
+                            <option value="accommodation">Accommodation</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ID *</label>
+                        <input type="text" class="form-input" id="placeId" placeholder="e.g., yamabiko_restaurant" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Longitude *</label>
+                        <input type="number" step="0.000001" class="form-input" id="placeLng" placeholder="138.4435" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Latitude *</label>
+                        <input type="number" step="0.000001" class="form-input" id="placeLat" placeholder="36.9207" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <input type="text" class="form-input" id="placeAddress" placeholder="Full address in Nozawa Onsen">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-textarea" id="placeDescription" placeholder="Description of the place..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-input" id="placePhone" placeholder="+81-XXX-XXX-XXXX">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Opening Hours</label>
+                        <input type="text" class="form-input" id="placeHours" placeholder="e.g., 11:00-21:00">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Local Tips</label>
+                    <textarea class="form-textarea" id="placeLocalTips" placeholder="Insider tips, warnings, or special notes..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Place</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script>
-        let restaurantsData = { restaurants: [] };
-        let onsensData = { onsens: [] };
-        let currentTab = 'restaurants';
+        let placesData = { places: [], total_count: 0 };
+        let editingIndex = null;
 
-        function switchTab(tab) {
-            currentTab = tab;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
+        // Load file
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    placesData = JSON.parse(event.target.result);
+                    updateStats();
+                    displayPlaces();
+                } catch (error) {
+                    alert('Error loading JSON file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function updateStats() {
+            const restaurants = placesData.places.filter(p => p.category === 'restaurant').length;
+            const onsens = placesData.places.filter(p => p.category === 'onsen').length;
+            const services = placesData.places.filter(p => p.category === 'service').length;
             
-            if (tab === 'restaurants') {
-                document.getElementById('restaurants-section').classList.remove('hidden');
-                document.getElementById('onsens-section').classList.add('hidden');
-            } else {
-                document.getElementById('restaurants-section').classList.add('hidden');
-                document.getElementById('onsens-section').classList.remove('hidden');
-            }
-            updateCounts();
-        }
-
-        function updateCounts() {
-            document.getElementById('restaurant-count').textContent = restaurantsData.restaurants.length;
-            document.getElementById('onsen-count').textContent = onsensData.onsens.length;
-        }
-
-        function renderList() {
-            if (currentTab === 'restaurants') {
-                renderRestaurants();
-            } else {
-                renderOnsens();
-            }
-            updateCounts();
-        }
-
-        function renderRestaurants() {
-            const list = document.getElementById('restaurants-list');
-            list.innerHTML = '';
+            document.getElementById('totalCount').textContent = placesData.places.length;
+            document.getElementById('restaurantCount').textContent = restaurants;
+            document.getElementById('onsenCount').textContent = onsens;
+            document.getElementById('serviceCount').textContent = services;
             
-            restaurantsData.restaurants.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = 'item';
-                div.innerHTML = `
-                    <div class="item-header">
-                        <div class="item-title">${item.name || 'Unnamed Restaurant'}</div>
-                        <button class="btn btn-danger" onclick="deleteItem('restaurants', ${index})">🗑️ Delete</button>
-                    </div>
-                    <div class="grid-2">
-                        <div class="field">
-                            <label>Name (English)</label>
-                            <input type="text" value="${item.name || ''}" onchange="updateField('restaurants', ${index}, 'name', this.value)">
-                        </div>
-                        <div class="field">
-                            <label>Name (Japanese)</label>
-                            <input type="text" value="${item.name_jp || ''}" onchange="updateField('restaurants', ${index}, 'name_jp', this.value)">
-                        </div>
-                        <div class="field">
-                            <label>Cuisine Type</label>
-                            <input type="text" value="${item.cuisine || ''}" onchange="updateField('restaurants', ${index}, 'cuisine', this.value)">
-                        </div>
-                        <div class="field">
-                            <label>Price Range</label>
-                            <select onchange="updateField('restaurants', ${index}, 'price_range', this.value)">
-                                <option value="">Select...</option>
-                                <option value="¥" ${item.price_range === '¥' ? 'selected' : ''}>¥ (Budget)</option>
-                                <option value="¥¥" ${item.price_range === '¥¥' ? 'selected' : ''}>¥¥ (Moderate)</option>
-                                <option value="¥¥¥" ${item.price_range === '¥¥¥' ? 'selected' : ''}>¥¥¥ (Expensive)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label>📍 Coordinates</label>
-                        <div class="coordinates">
-                            <input type="number" step="0.000001" placeholder="Latitude" value="${item.location?.lat || ''}" onchange="updateCoordinate('restaurants', ${index}, 'lat', this.value)">
-                            <input type="number" step="0.000001" placeholder="Longitude" value="${item.location?.lng || ''}" onchange="updateCoordinate('restaurants', ${index}, 'lng', this.value)">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label>Address</label>
-                        <input type="text" value="${item.location?.address || item.address || ''}" onchange="updateAddress('restaurants', ${index}, this.value)">
-                    </div>
-                    <div class="field">
-                        <label>Hours</label>
-                        <input type="text" placeholder="e.g., Mon-Sun: 11:30 AM - 10:00 PM" value="${item.hours || ''}" onchange="updateField('restaurants', ${index}, 'hours', this.value)">
-                    </div>
-                    <div class="field">
-                        <label>Local Tips</label>
-                        <textarea onchange="updateField('restaurants', ${index}, 'local_tips', this.value)">${item.local_tips || ''}</textarea>
+            placesData.total_count = placesData.places.length;
+        }
+
+        function displayPlaces() {
+            const container = document.getElementById('placesContainer');
+            const category = document.getElementById('categoryFilter').value;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            
+            let filtered = placesData.places;
+            
+            if (category !== 'all') {
+                filtered = filtered.filter(p => p.category === category);
+            }
+            
+            if (search) {
+                filtered = filtered.filter(p => 
+                    p.name?.toLowerCase().includes(search) ||
+                    p.name_jp?.toLowerCase().includes(search) ||
+                    p.description?.toLowerCase().includes(search)
+                );
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No places found</h2>
+                        <p>Try adjusting your filters or search</p>
                     </div>
                 `;
-                list.appendChild(div);
+                return;
+            }
+
+            container.innerHTML = '<div class="places-grid">' + 
+                filtered.map((place, index) => {
+                    const originalIndex = placesData.places.indexOf(place);
+                    return createPlaceCard(place, originalIndex);
+                }).join('') + 
+                '</div>';
+        }
+
+        function createPlaceCard(place, index) {
+            // Handle different data structures - restaurants have nested google_data
+            const name = place.name || place.google_data?.name || 'Unnamed';
+            const coords = place.coordinates || place.google_data?.coordinates || (place.location ? [place.location.lng, place.location.lat] : [0, 0]);
+            const address = place.location?.address || place.google_data?.address || '';
+            const phone = place.phone || place.google_data?.phone || '';
+            const hours = place.opening_hours || (place.google_data?.hours?.weekday_text ? place.google_data.hours.weekday_text[0] : '');
+            
+            const categoryClass = `category-${place.category || 'service'}`;
+            
+            return `
+                <div class="place-card">
+                    <div class="place-header">
+                        <div class="place-title">
+                            <div class="place-name">${name}</div>
+                            ${place.name_jp ? `<div class="place-name-jp">${place.name_jp}</div>` : ''}
+                        </div>
+                        <span class="category-badge ${categoryClass}">${place.category || 'uncategorized'}</span>
+                    </div>
+                    
+                    <div class="place-details">
+                        <div class="detail-row">
+                            <span class="detail-label">ID:</span>
+                            <span class="detail-value">${place.id || 'No ID'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Coordinates:</span>
+                            <span class="detail-value">${coords[1]?.toFixed(6)}, ${coords[0]?.toFixed(6)}</span>
+                        </div>
+                        ${address ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Address:</span>
+                                <span class="detail-value">${address}</span>
+                            </div>
+                        ` : ''}
+                        ${phone ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Phone:</span>
+                                <span class="detail-value">${phone}</span>
+                            </div>
+                        ` : ''}
+                        ${hours ? `
+                            <div class="detail-row">
+                                <span class="detail-label">Hours:</span>
+                                <span class="detail-value">${hours}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="place-actions">
+                        ${place.category === 'restaurant' ? 
+                            `<button class="btn btn-secondary btn-small" disabled>API Managed</button>` :
+                            `<button class="btn btn-primary btn-small" onclick="editPlace(${index})">✏️ Edit</button>
+                             <button class="btn btn-danger btn-small" onclick="deletePlace(${index})">🗑️ Delete</button>`
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        function filterPlaces() {
+            displayPlaces();
+        }
+
+        function showAddModal() {
+            editingIndex = null;
+            document.getElementById('modalTitle').textContent = 'Add New Place';
+            document.getElementById('placeForm').reset();
+            document.getElementById('placeModal').classList.add('active');
+        }
+
+        function editPlace(index) {
+            editingIndex = index;
+            const place = placesData.places[index];
+            document.getElementById('modalTitle').textContent = 'Edit Place';
+            
+            // Populate form
+            document.getElementById('placeName').value = place.name || '';
+            document.getElementById('placeNameJp').value = place.name_jp || '';
+            document.getElementById('placeCategory').value = place.category || 'restaurant';
+            document.getElementById('placeId').value = place.id || '';
+            
+            // Handle coordinates - check both formats
+            const coords = place.coordinates || (place.location ? [place.location.lng, place.location.lat] : [0, 0]);
+            document.getElementById('placeLng').value = coords[0] || '';
+            document.getElementById('placeLat').value = coords[1] || '';
+            
+            document.getElementById('placeAddress').value = place.location?.address || '';
+            document.getElementById('placeDescription').value = place.description || '';
+            document.getElementById('placePhone').value = place.phone || '';
+            document.getElementById('placeHours').value = place.opening_hours || '';
+            document.getElementById('placeLocalTips').value = place.local_tips || '';
+            
+            document.getElementById('placeModal').classList.add('active');
+        }
+
+        function deletePlace(index) {
+            if (confirm('Are you sure you want to delete this place?')) {
+                placesData.places.splice(index, 1);
+                updateStats();
+                displayPlaces();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('placeModal').classList.remove('active');
+            editingIndex = null;
+        }
+
+        document.getElementById('placeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const newPlace = {
+                id: document.getElementById('placeId').value,
+                name: document.getElementById('placeName').value,
+                name_jp: document.getElementById('placeNameJp').value || undefined,
+                category: document.getElementById('placeCategory').value,
+                coordinates: [
+                    parseFloat(document.getElementById('placeLng').value),
+                    parseFloat(document.getElementById('placeLat').value)
+                ],
+                location: {
+                    address: document.getElementById('placeAddress').value || undefined
+                },
+                description: document.getElementById('placeDescription').value || undefined,
+                phone: document.getElementById('placePhone').value || undefined,
+                opening_hours: document.getElementById('placeHours').value || undefined,
+                local_tips: document.getElementById('placeLocalTips').value || undefined
+            };
+            
+            // Clean undefined values
+            Object.keys(newPlace).forEach(key => {
+                if (newPlace[key] === undefined) delete newPlace[key];
             });
-        }
-
-        function renderOnsens() {
-            const list = document.getElementById('onsens-list');
-            list.innerHTML = '';
+            if (newPlace.location && !newPlace.location.address) delete newPlace.location;
             
-            onsensData.onsens.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = 'item';
-                div.innerHTML = `
-                    <div class="item-header">
-                        <div class="item-title">${item.name || 'Unnamed Onsen'}</div>
-                        <button class="btn btn-danger" onclick="deleteItem('onsens', ${index})">🗑️ Delete</button>
-                    </div>
-                    <div class="grid-2">
-                        <div class="field">
-                            <label>Name (English)</label>
-                            <input type="text" value="${item.name || ''}" onchange="updateField('onsens', ${index}, 'name', this.value)">
-                        </div>
-                        <div class="field">
-                            <label>Name (Japanese)</label>
-                            <input type="text" value="${item.name_jp || ''}" onchange="updateField('onsens', ${index}, 'name_jp', this.value)">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label>📍 Coordinates</label>
-                        <div class="coordinates">
-                            <input type="number" step="0.000001" placeholder="Latitude" value="${item.location?.lat || ''}" onchange="updateCoordinate('onsens', ${index}, 'lat', this.value)">
-                            <input type="number" step="0.000001" placeholder="Longitude" value="${item.location?.lng || ''}" onchange="updateCoordinate('onsens', ${index}, 'lng', this.value)">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label>Address</label>
-                        <input type="text" value="${item.location?.address || ''}" onchange="updateAddress('onsens', ${index}, this.value)">
-                    </div>
-                    <div class="grid-2">
-                        <div class="field">
-                            <label>Temperature</label>
-                            <select onchange="updateNestedField('onsens', ${index}, 'local_info.temperature', this.value)">
-                                <option value="">Select temperature</option>
-                                <option value="Moderate (38-40°C)" ${item.local_info?.temperature === 'Moderate (38-40°C)' ? 'selected' : ''}>Moderate (38-40°C)</option>
-                                <option value="Hot (40-42°C)" ${item.local_info?.temperature === 'Hot (40-42°C)' ? 'selected' : ''}>Hot (40-42°C)</option>
-                                <option value="Very hot (42-44°C)" ${item.local_info?.temperature === 'Very hot (42-44°C)' ? 'selected' : ''}>Very hot (42-44°C)</option>
-                                <option value="Boiling (90°C)" ${item.local_info?.temperature === 'Boiling (90°C)' ? 'selected' : ''}>Boiling (90°C) - NOT for bathing!</option>
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label>Entrance Fee</label>
-                            <input type="text" placeholder="e.g., Free (donation box)" value="${item.local_info?.entrance_fee || ''}" onchange="updateNestedField('onsens', ${index}, 'local_info.entrance_fee', this.value)">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label>Hours</label>
-                        <input type="text" placeholder="e.g., Daily: 6:00 AM - 11:00 PM" value="${item.hours?.weekday_text?.[0] || ''}" onchange="updateHours('onsens', ${index}, this.value)">
-                    </div>
-                    <div class="field">
-                        <label>Description</label>
-                        <textarea onchange="updateField('onsens', ${index}, 'description', this.value)">${item.description || ''}</textarea>
-                    </div>
-                    <div class="field">
-                        <label>Etiquette Notes</label>
-                        <textarea onchange="updateNestedField('onsens', ${index}, 'local_info.etiquette_notes', this.value)">${item.local_info?.etiquette_notes || ''}</textarea>
-                    </div>
-                    <div class="field">
-                        <label>Local Tips</label>
-                        <textarea onchange="updateNestedField('onsens', ${index}, 'local_info.local_tips', this.value)">${item.local_info?.local_tips || ''}</textarea>
-                    </div>
-                `;
-                list.appendChild(div);
-            });
-        }
-
-        function updateField(type, index, field, value) {
-            const data = type === 'restaurants' ? restaurantsData : onsensData;
-            data[type][index][field] = value;
-            showStatus('Updated!', 'success');
-        }
-
-        function updateCoordinate(type, index, coord, value) {
-            const data = type === 'restaurants' ? restaurantsData : onsensData;
-            if (!data[type][index].location) {
-                data[type][index].location = {};
-            }
-            data[type][index].location[coord] = parseFloat(value) || 0;
-            showStatus('Coordinates updated!', 'success');
-        }
-
-        function updateAddress(type, index, value) {
-            const data = type === 'restaurants' ? restaurantsData : onsensData;
-            if (!data[type][index].location) {
-                data[type][index].location = {};
-            }
-            data[type][index].location.address = value;
-            // Also update root level address for restaurants
-            if (type === 'restaurants') {
-                data[type][index].address = value;
-            }
-            showStatus('Address updated!', 'success');
-        }
-
-        function updateNestedField(type, index, path, value) {
-            const data = type === 'restaurants' ? restaurantsData : onsensData;
-            const parts = path.split('.');
-            let obj = data[type][index];
-            
-            for (let i = 0; i < parts.length - 1; i++) {
-                if (!obj[parts[i]]) obj[parts[i]] = {};
-                obj = obj[parts[i]];
-            }
-            
-            obj[parts[parts.length - 1]] = value;
-            showStatus('Updated!', 'success');
-        }
-
-        function updateHours(type, index, value) {
-            const data = type === 'restaurants' ? restaurantsData : onsensData;
-            if (!data[type][index].hours) data[type][index].hours = {};
-            data[type][index].hours.weekday_text = [value];
-            showStatus('Hours updated!', 'success');
-        }
-
-        function addItem(type) {
-            if (type === 'restaurant') {
-                restaurantsData.restaurants.push({
-                    name: 'New Restaurant',
-                    category: 'restaurant',
-                    name_jp: '',
-                    cuisine: '',
-                    price_range: '¥¥',
-                    location: {
-                        lat: 36.92309,  // Default to village center
-                        lng: 138.44644,
-                        address: 'Nozawa Onsen, Nagano'
-                    },
-                    hours: '',
-                    local_tips: ''
-                });
-                renderRestaurants();
+            if (editingIndex !== null) {
+                placesData.places[editingIndex] = newPlace;
             } else {
-                onsensData.onsens.push({
-                    name: 'New Onsen',
-                    category: 'onsen',
-                    name_jp: '',
-                    location: {
-                        lat: 36.92309,  // Default to village center
-                        lng: 138.44644,
-                        address: 'Nozawa Onsen Village, Shimotakai District, Nagano 389-2502'
-                    },
-                    hours: { weekday_text: ['Daily: 6:00 AM - 11:00 PM'] },
-                    local_info: {
-                        entrance_fee: 'Free (donation box)',
-                        temperature: 'Hot (40-42°C)',
-                        etiquette_notes: '',
-                        local_tips: ''
-                    }
-                });
-                renderOnsens();
+                placesData.places.push(newPlace);
             }
-            updateCounts();
-            showStatus('Item added!', 'success');
-        }
-
-        function deleteItem(type, index) {
-            if (confirm('Are you sure you want to delete this item?')) {
-                const data = type === 'restaurants' ? restaurantsData : onsensData;
-                data[type].splice(index, 1);
-                renderList();
-                showStatus('Item deleted!', 'success');
-            }
-        }
+            
+            updateStats();
+            displayPlaces();
+            closeModal();
+        });
 
         function downloadJSON() {
-            const data = currentTab === 'restaurants' ? restaurantsData : onsensData;
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `nozawa_${currentTab}_enhanced.json`;
-            a.click();
-            showStatus(`Downloaded as nozawa_${currentTab}_enhanced.json`, 'success');
+            const dataStr = JSON.stringify(placesData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = 'nozawa_places_unified.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
         }
 
-        function uploadJSON(event, type) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (type === 'restaurants') {
-                            restaurantsData = data;
-                            currentTab = 'restaurants';
-                        } else {
-                            onsensData = data;
-                            currentTab = 'onsens';
-                        }
-                        renderList();
-                        showStatus(`Loaded ${type === 'restaurants' ? restaurantsData.restaurants.length : onsensData.onsens.length} items from JSON file!`, 'success');
-                    } catch (error) {
-                        showStatus('Error parsing JSON file! Check console for details.', 'error');
-                        console.error('JSON Parse Error:', error);
-                    }
-                };
-                reader.readAsText(file);
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
             }
-        }
+        });
 
-        function clearAll() {
-            if (confirm('Clear all data in current tab? This cannot be undone!')) {
-                if (currentTab === 'restaurants') {
-                    restaurantsData = { restaurants: [] };
-                } else {
-                    onsensData = { onsens: [] };
-                }
-                renderList();
-                showStatus('All data cleared!', 'success');
+        // Close modal on outside click
+        document.getElementById('placeModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
             }
-        }
-
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = `status ${type}`;
-            setTimeout(() => {
-                status.className = 'status';
-            }, 3000);
-        }
-
-        // Initialize on load
-        updateCounts();
+        });
     </script>
 </body>
 </html>
