@@ -38,13 +38,12 @@ app.get('/api/places', (req, res) => {
     // Filter by category if requested
     const { category } = req.query;
     if (category) {
-      const categories = category.split(',');
-      places = places.filter(p => categories.includes(p.category));
+      places = places.filter(p => p.category === category);
     }
     
-    res.json({ 
+    res.json({
       places,
-      total_count: places.length 
+      total_count: places.length
     });
   } catch (error) {
     console.error('Error loading places:', error);
