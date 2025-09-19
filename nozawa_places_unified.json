@@ -13395,7 +13395,8 @@
         "temperature": "Very hot (42-44°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "The hottest and most popular. Try early morning for quieter experience."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_kawaharayu",
@@ -13418,7 +13419,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Slightly cooler than Oyu, good for those who find Oyu too hot."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_kumanotearayu",
@@ -13441,7 +13443,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "One of the quieter baths, good for relaxation."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_akihanoyu",
@@ -13464,7 +13467,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Popular with locals who come daily."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_juodonoyu",
@@ -13487,7 +13491,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Spacious compared to other public baths."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_matsubanoyu",
@@ -13510,7 +13515,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "One of the quieter, more peaceful baths."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_nakanoyu",
@@ -13533,7 +13539,8 @@
         "temperature": "Moderate (38-40°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Good for those who find other baths too hot."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_shinyu",
@@ -13556,7 +13563,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Nice facilities after renovation."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_kaminoyu",
@@ -13579,7 +13587,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Peaceful location near temple area."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_shimonoyu",
@@ -13602,7 +13611,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Sister bath to Kami-no-yu."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_yokochinoyu",
@@ -13625,7 +13635,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Hidden gem, less known to tourists."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_takinoyu",
@@ -13648,7 +13659,8 @@
         "temperature": "Hot (40-42°C)",
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Beautiful location, worth the walk."
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "nozawa_ogama",
@@ -13671,7 +13683,8 @@
         "temperature": "Boiling (90°C)",
         "hours": "24/7 viewing, cooking by locals only",
         "local_tips": "Great photo spot. Watch locals cooking vegetables. Do not touch water!"
-      }
+      },
+      "manual_photos": true
     },
     {
       "id": "lift_nagasaka_gondola",

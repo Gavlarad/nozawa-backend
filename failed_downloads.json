@@ -1,0 +1,14 @@
+[
+  {
+    "place": "Organic coffee stand Shizenya",
+    "photo": 2,
+    "url": "https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=AciIO2cgcpyAoD85FXCJcTAD22nlbCbuscOUDqC89v7oEOy4VeGBw2M2IInQMow14FQg7UhoVDoGYQHk1TZTENVz0NURAnMgWxfpy1W4snM82gOSwU4ZTGpqqZ8ers0LPArO6-MeOo3r_sFPgFs_m_aT47YB4DLJN5M2BBf8krpa1w5-aAjjMHOChU6IDWhC1o_yqvNiAutvUnKslFZGr63q1QNLOwC3r7DWwZGKNkywA0lJmBcy3VtxvbAsmuiJx-0wpd15SMdDONfrDHurgKt829mEJLLMY4aHfoAGu1tGlVXt4g&key=AIzaSyDA4KHJIRJKGpHxaLPTumOSWlWYH5ypKFw",
+    "error": "HTTP 403: Forbidden"
+  },
+  {
+    "place": "Organic coffee stand Shizenya",
+    "photo": 3,
+    "url": "https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=AciIO2e5NuYlMDo9QxYIhovkMKYpmZpY46pM9OUIkURVFP9pbscPODrfr1EsguQGbyYSY_JbRfduKtoXoKnr6Ut0_-YIJQfcNW1T1rF6IyQ6KAQyD55kW1hLArTF_8gA4L92oPUM-sWRKfHKFYadnNNrF-Ia6dvfNVZzA_P5IpWZqwtTEdw-nQZdccbYkvhiKKY0_rXl6dtUt2iwPaaaJY664TZARskI39EXLIdjdo06Bm9THtPA5V8y_4XaV_puUasbav9OaP50OiI8YfK1zf5bTb_5jYcX5pqg1TShcycQjGO8Jw&key=AIzaSyDA4KHJIRJKGpHxaLPTumOSWlWYH5ypKFw",
+    "error": "HTTP 403: Forbidden"
+  }
+]
