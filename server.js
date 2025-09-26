@@ -3,9 +3,16 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const scheduler = require('./services/scheduler');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Database connection for group management
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Middleware
 app.use(cors());
@@ -72,6 +79,10 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c * 1000;
 }
 
+// Generate 6-digit numeric code for groups
+function generateGroupCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 // MAIN RESTAURANTS/PLACES ENDPOINT
 app.get('/api/restaurants', (req, res) => {
@@ -215,6 +226,151 @@ app.get('/api/restaurants/:id', (req, res) => {
     is_open_now: isRestaurantOpen(restaurant)
   });
 });
+
+// ============= GROUP MANAGEMENT ENDPOINTS =============
+
+// Create a new group
+app.post('/api/groups/create', async (req, res) => {
+  const { deviceId, userName } = req.body;
+  
+  if (!deviceId || !userName) {
+    return res.status(400).json({ error: 'Device ID and user name required' });
+  }
+  
+  let code;
+  let attempts = 0;
+  
+  do {
+    code = generateGroupCode();
+    try {
+      await pool.query(
+        'INSERT INTO groups (code, created_by_device, created_by_name) VALUES ($1, $2, $3)',
+        [code, deviceId, userName]
+      );
+      break;
+    } catch (e) {
+      if (e.code === '23505') { // Duplicate key error
+        attempts++;
+        if (attempts >= 10) {
+          return res.status(500).json({ error: 'Could not generate unique code' });
+        }
+      } else {
+        console.error('Database error:', e);
+        return res.status(500).json({ error: 'Database error' });
+      }
+    }
+  } while (attempts < 10);
+  
+  console.log(`Group created: ${code} by ${userName}`);
+  res.json({ code });
+});
+
+// Check if a group exists
+app.get('/api/groups/:code', async (req, res) => {
+  const { code } = req.params;
+  
+  try {
+    const result = await pool.query(
+      'SELECT * FROM groups WHERE code = $1',
+      [code]
+    );
+    
+    if (result.rows.length > 0) {
+      res.json({ exists: true, group: result.rows[0] });
+    } else {
+      res.status(404).json({ exists: false });
+    }
+  } catch (error) {
+    console.error('Error checking group:', error);
+    res.status(500).json({ error: 'Failed to check group' });
+  }
+});
+
+// Check-in to a place
+app.post('/api/groups/:code/checkin', async (req, res) => {
+  const { code } = req.params;
+  const { deviceId, userName, placeId, placeName, lat, lng } = req.body;
+  
+  if (!deviceId || !userName || !placeId || !placeName) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  try {
+    // Verify group exists
+    const groupCheck = await pool.query('SELECT * FROM groups WHERE code = $1', [code]);
+    if (groupCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    // Insert check-in
+    await pool.query(
+      `INSERT INTO checkins 
+       (device_id, user_name, group_code, place_id, place_name, lat, lng) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [deviceId, userName, code, placeId, placeName, lat, lng]
+    );
+    
+    console.log(`Check-in: ${userName} at ${placeName} in group ${code}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Check-in error:', error);
+    res.status(500).json({ error: 'Failed to save check-in' });
+  }
+});
+
+// Get group check-ins (last 24 hours)
+app.get('/api/groups/:code/checkins', async (req, res) => {
+  const { code } = req.params;
+  
+  try {
+    const result = await pool.query(
+      `SELECT * FROM checkins 
+       WHERE group_code = $1 
+       AND created_at > NOW() - INTERVAL '24 hours'
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [code]
+    );
+    
+    res.json({
+      group_code: code,
+      checkins: result.rows,
+      count: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching check-ins:', error);
+    res.status(500).json({ error: 'Failed to fetch check-ins' });
+  }
+});
+
+// Get member list for a group (unique users who checked in)
+app.get('/api/groups/:code/members', async (req, res) => {
+  const { code } = req.params;
+  
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT ON (device_id) 
+       device_id, user_name, MAX(created_at) as last_checkin
+       FROM checkins 
+       WHERE group_code = $1 
+       AND created_at > NOW() - INTERVAL '24 hours'
+       GROUP BY device_id, user_name
+       ORDER BY device_id, last_checkin DESC`,
+      [code]
+    );
+    
+    res.json({
+      group_code: code,
+      members: result.rows,
+      count: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching members:', error);
+    res.status(500).json({ error: 'Failed to fetch members' });
+  }
+});
+
+// ============= END GROUP MANAGEMENT =============
 
 // WEATHER ENDPOINTS
 async function fetchWeatherData() {
@@ -366,6 +522,13 @@ app.get('/', (req, res) => {
       },
       lifts: {
         'GET /api/lifts/status': 'Current lift status'
+      },
+      groups: {
+        'POST /api/groups/create': 'Create new group',
+        'GET /api/groups/:code': 'Check if group exists',
+        'POST /api/groups/:code/checkin': 'Check-in to a place',
+        'GET /api/groups/:code/checkins': 'Get group check-ins',
+        'GET /api/groups/:code/members': 'Get group members'
       }
     }
   });
@@ -383,6 +546,7 @@ async function startServer() {
     console.log(`🍴 Loaded ${restaurantsData.length} restaurants`);
     console.log(`🌡️  Weather API connected`);
     console.log(`🎿 Lift status monitoring active`);
+    console.log(`👥 Group management ready`);
     console.log('='.repeat(40));
   });
 }
