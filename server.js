@@ -4,16 +4,38 @@ const fs = require('fs');
 const path = require('path');
 const scheduler = require('./services/scheduler');
 const { Pool } = require('pg');
-require('dotenv').config(); // Add this line
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection - fix the configuration
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
+// Database connection - proper configuration for Railway
+let pool;
+
+if (process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false
+    } : false
+  });
+} else {
+  console.error('DATABASE_URL not found!');
+  pool = new Pool({
+    host: 'localhost',
+    port: 5432,
+    database: 'test',
+    user: 'test',
+    password: 'test'
+  });
+}
+
+// Test database connection on startup
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('Error connecting to database:', err.stack);
+  } else {
+    console.log('Database connected successfully');
+    release();
   }
 });
 
