@@ -4,14 +4,17 @@ const fs = require('fs');
 const path = require('path');
 const scheduler = require('./services/scheduler');
 const { Pool } = require('pg');
+require('dotenv').config(); // Add this line
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection for group management
+// Database connection - fix the configuration
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Middleware
