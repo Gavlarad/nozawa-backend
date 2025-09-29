@@ -252,7 +252,23 @@ app.get('/api/restaurants/:id', (req, res) => {
   });
 });
 
-// ============= GROUP MANAGEMENT ENDPOINTS =============
+// ============================================
+// GROUP MANAGEMENT ENDPOINTS
+// ============================================
+
+// Helper function for time display
+function getTimeAgo(timestamp) {
+  const diff = Date.now() - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
+}
 
 // Create a new group
 app.post('/api/groups/create', async (req, res) => {
@@ -268,7 +284,6 @@ app.post('/api/groups/create', async (req, res) => {
   do {
     code = generateGroupCode();
     try {
-      // Simplified query - just insert the code for now
       await pool.query(
         'INSERT INTO groups (code) VALUES ($1)',
         [code]
@@ -315,7 +330,7 @@ app.get('/api/groups/:code', async (req, res) => {
 // Check-in to a place
 app.post('/api/groups/:code/checkin', async (req, res) => {
   const { code } = req.params;
-  const { deviceId, userName, placeId, placeName, lat, lng } = req.body;
+  const { deviceId, userName, placeId, placeName } = req.body;
   
   if (!deviceId || !userName || !placeId || !placeName) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -328,40 +343,87 @@ app.post('/api/groups/:code/checkin', async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
     
-    // Insert check-in with CURRENT_DATE
+    // Auto-checkout any existing active check-ins for this user
     await pool.query(
-      `INSERT INTO checkins 
-       (device_id, user_name, group_code, place_id, place_name, lat, lng, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE)`,
-      [deviceId, userName, code, placeId, placeName, lat, lng]
+      'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true',
+      [Date.now(), code, deviceId]
+    );
+    
+    // Create new check-in
+    const result = await pool.query(
+      'INSERT INTO checkin_new (group_code, user_name, device_id, place_id, place_name, checked_in_at, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [code, userName, deviceId, placeId, placeName, Date.now(), true]
     );
     
     console.log(`Check-in: ${userName} at ${placeName} in group ${code}`);
-    res.json({ success: true });
+    res.json({ success: true, checkin: result.rows[0] });
   } catch (error) {
     console.error('Check-in error:', error);
     res.status(500).json({ error: 'Failed to save check-in' });
   }
 });
 
-// Get group check-ins (last 24 hours)
+// Check-out from a place
+app.post('/api/groups/:code/checkout', async (req, res) => {
+  const { code } = req.params;
+  const { deviceId, placeId } = req.body;
+  
+  if (!deviceId || !placeId) {
+    return res.status(400).json({ error: 'Device ID and place ID required' });
+  }
+  
+  try {
+    const result = await pool.query(
+      'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true RETURNING *',
+      [Date.now(), code, deviceId, placeId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No active check-in found' });
+    }
+    
+    console.log(`Check-out: Device ${deviceId} from ${placeId} in group ${code}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Checkout error:', error);
+    res.status(500).json({ error: 'Failed to check out' });
+  }
+});
+
+// Get group check-ins (with auto-expire)
 app.get('/api/groups/:code/checkins', async (req, res) => {
   const { code } = req.params;
   
   try {
-    const result = await pool.query(
-      `SELECT * FROM checkins 
-       WHERE group_code = $1 
-       AND created_at > NOW() - INTERVAL '24 hours'
-       ORDER BY created_at DESC
-       LIMIT 50`,
-      [code]
+    // Auto-expire check-ins older than 1 hour that haven't been manually checked out
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    await pool.query(
+      'UPDATE checkin_new SET is_active = false WHERE group_code = $1 AND checked_in_at < $2 AND is_active = true AND checked_out_at IS NULL',
+      [code, oneHourAgo]
     );
+    
+    // Get all check-ins for this group (last 7 days for history)
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const result = await pool.query(
+      'SELECT * FROM checkin_new WHERE group_code = $1 AND checked_in_at > $2 ORDER BY checked_in_at DESC',
+      [code, sevenDaysAgo]
+    );
+    
+    // Format the timestamps for frontend
+    const formattedCheckins = result.rows.map(row => ({
+      ...row,
+      checked_in_at: parseInt(row.checked_in_at),
+      checked_out_at: row.checked_out_at ? parseInt(row.checked_out_at) : null,
+      time_ago: getTimeAgo(parseInt(row.checked_in_at)),
+      // Add display status
+      status: row.is_active ? 'active' : 
+              (row.checked_out_at ? 'checked_out' : 'expired')
+    }));
     
     res.json({
       group_code: code,
-      checkins: result.rows,
-      count: result.rows.length
+      checkins: formattedCheckins,
+      count: formattedCheckins.length
     });
   } catch (error) {
     console.error('Error fetching check-ins:', error);
@@ -369,26 +431,46 @@ app.get('/api/groups/:code/checkins', async (req, res) => {
   }
 });
 
-// Get member list for a group (unique users who checked in)
+// Get member list for a group
 app.get('/api/groups/:code/members', async (req, res) => {
   const { code } = req.params;
   
   try {
+    // Get unique members who have checked in within last 7 days
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const result = await pool.query(
       `SELECT DISTINCT ON (device_id) 
-       device_id, user_name, MAX(created_at) as last_checkin
-       FROM checkins 
-       WHERE group_code = $1 
-       AND created_at > NOW() - INTERVAL '24 hours'
+       device_id, user_name, MAX(checked_in_at) as last_checkin
+       FROM checkin_new 
+       WHERE group_code = $1 AND checked_in_at > $2
        GROUP BY device_id, user_name
-       ORDER BY device_id, last_checkin DESC`,
+       ORDER BY device_id`,
+      [code, sevenDaysAgo]
+    );
+    
+    // Get currently active check-ins for each member
+    const activeResult = await pool.query(
+      'SELECT device_id, place_name FROM checkin_new WHERE group_code = $1 AND is_active = true',
       [code]
     );
     
+    const activeMap = {};
+    activeResult.rows.forEach(row => {
+      activeMap[row.device_id] = row.place_name;
+    });
+    
+    // Combine member info with active status
+    const membersWithStatus = result.rows.map(member => ({
+      ...member,
+      last_checkin: parseInt(member.last_checkin),
+      currently_at: activeMap[member.device_id] || null,
+      is_checked_in: !!activeMap[member.device_id]
+    }));
+    
     res.json({
       group_code: code,
-      members: result.rows,
-      count: result.rows.length
+      members: membersWithStatus,
+      count: membersWithStatus.length
     });
   } catch (error) {
     console.error('Error fetching members:', error);
