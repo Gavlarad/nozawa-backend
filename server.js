@@ -49,10 +49,11 @@ let lastDataLoad = null;
 
 function loadRestaurantData() {
   try {
-    const dataPath = path.join(__dirname, 'nozawa_restaurants_enhanced.json');
+    const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
     const rawData = fs.readFileSync(dataPath, 'utf8');
     const data = JSON.parse(rawData);
-    restaurantsData = data.restaurants || [];
+    // Filter to only get restaurants from the unified data
+    restaurantsData = (data.places || []).filter(p => p.category === 'restaurant');
     lastDataLoad = new Date().toISOString();
     console.log(`Loaded ${restaurantsData.length} restaurants at ${lastDataLoad}`);
   } catch (error) {
