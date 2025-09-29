@@ -243,22 +243,21 @@ app.post('/api/groups/create', async (req, res) => {
   do {
     code = generateGroupCode();
     try {
-      // Modified query - explicitly set created_at as current date
+      // Use CURRENT_DATE for date type column
       await pool.query(
         'INSERT INTO groups (code, created_by_device, created_by_name, created_at) VALUES ($1, $2, $3, CURRENT_DATE)',
         [code, deviceId, userName]
       );
       break;
     } catch (e) {
-      console.error('Insert error:', e); // Add logging
       if (e.code === '23505') { // Duplicate key error
         attempts++;
         if (attempts >= 10) {
           return res.status(500).json({ error: 'Could not generate unique code' });
         }
       } else {
-        console.error('Database error details:', e.message);
-        return res.status(500).json({ error: 'Database error: ' + e.message });
+        console.error('Database error details:', e);
+        return res.status(500).json({ error: 'Database error' });
       }
     }
   } while (attempts < 10);
@@ -304,11 +303,11 @@ app.post('/api/groups/:code/checkin', async (req, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
     
-    // Insert check-in
+    // Insert check-in with CURRENT_DATE
     await pool.query(
       `INSERT INTO checkins 
-       (device_id, user_name, group_code, place_id, place_name, lat, lng) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       (device_id, user_name, group_code, place_id, place_name, lat, lng, created_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE)`,
       [deviceId, userName, code, placeId, placeName, lat, lng]
     );
     
