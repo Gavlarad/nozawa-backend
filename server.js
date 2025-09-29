@@ -268,10 +268,10 @@ app.post('/api/groups/create', async (req, res) => {
   do {
     code = generateGroupCode();
     try {
-      // Use CURRENT_DATE for date type column
+      // Simplified query - just insert the code for now
       await pool.query(
-        'INSERT INTO groups (code, created_by_device, created_by_name, created_at) VALUES ($1, $2, $3, CURRENT_DATE)',
-        [code, deviceId, userName]
+        'INSERT INTO groups (code) VALUES ($1)',
+        [code]
       );
       break;
     } catch (e) {
@@ -281,7 +281,7 @@ app.post('/api/groups/create', async (req, res) => {
           return res.status(500).json({ error: 'Could not generate unique code' });
         }
       } else {
-        console.error('Database error details:', e);
+        console.error('Database error:', e.message);
         return res.status(500).json({ error: 'Database error' });
       }
     }
