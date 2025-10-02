@@ -350,10 +350,11 @@ app.post('/api/groups/:code/checkin', async (req, res) => {
       [Date.now(), code, deviceId]
     );
     
-    // Create new check-in
+    // Create new check-in (use provided timestamp or current time)
+    const checkedInAt = req.body.timestamp || Date.now();
     const result = await pool.query(
       'INSERT INTO checkin_new (group_code, user_name, device_id, place_id, place_name, checked_in_at, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [code, userName, deviceId, placeId, placeName, Date.now(), true]
+      [code, userName, deviceId, placeId, placeName, checkedInAt, true]
     );
     
     console.log(`Check-in: ${userName} at ${placeName} in group ${code}`);
@@ -374,9 +375,11 @@ app.post('/api/groups/:code/checkout', async (req, res) => {
   }
   
   try {
+    // Use provided timestamp or current time
+    const checkedOutAt = req.body.timestamp || Date.now();
     const result = await pool.query(
       'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true RETURNING *',
-      [Date.now(), code, deviceId, placeId]
+      [checkedOutAt, code, deviceId, placeId]
     );
     
     if (result.rows.length === 0) {
