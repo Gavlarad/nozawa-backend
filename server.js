@@ -41,7 +41,7 @@ pool.connect((err, client, release) => {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Load restaurant data
 let restaurantsData = [];
