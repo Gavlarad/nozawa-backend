@@ -600,6 +600,95 @@ app.post('/api/admin/reload-data', async (req, res) => {
   });
 });
 
+// Get current places data for admin editing
+app.get('/api/admin/places-data', (req, res) => {
+  const { admin_key } = req.query;
+  
+  if (admin_key !== 'nozawa2024') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
+    const rawData = fs.readFileSync(dataPath, 'utf8');
+    const data = JSON.parse(rawData);
+    
+    res.json({
+      success: true,
+      data: data,
+      loaded_from: 'server',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error loading places data:', error);
+    res.status(500).json({ 
+      error: 'Failed to load places data',
+      message: error.message 
+    });
+  }
+});
+
+// Save updated places data (with backup)
+app.post('/api/admin/save-places', (req, res) => {
+  const { admin_key, data } = req.body;
+  
+  if (admin_key !== 'nozawa2024') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  if (!data || !data.places) {
+    return res.status(400).json({ error: 'Invalid data format' });
+  }
+  
+  try {
+    const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
+    const backupDir = path.join(__dirname, 'backups');
+    
+    // Create backups directory if it doesn't exist
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    
+    // Create timestamped backup of current file
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const backupPath = path.join(backupDir, `nozawa_places_unified_backup_${timestamp}.json`);
+    
+    // Read current file and create backup
+    if (fs.existsSync(dataPath)) {
+      const currentData = fs.readFileSync(dataPath, 'utf8');
+      fs.writeFileSync(backupPath, currentData, 'utf8');
+      console.log(`✅ Backup created: ${backupPath}`);
+    }
+    
+    // Save new data
+    const newData = {
+      ...data,
+      total_count: data.places.length,
+      generated_at: new Date().toISOString()
+    };
+    
+    fs.writeFileSync(dataPath, JSON.stringify(newData, null, 2), 'utf8');
+    console.log(`✅ Places data updated: ${data.places.length} places`);
+    
+    // Reload data in memory
+    loadRestaurantData();
+    
+    res.json({
+      success: true,
+      places_saved: data.places.length,
+      backup_created: `nozawa_places_unified_backup_${timestamp}.json`,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error saving places data:', error);
+    res.status(500).json({ 
+      error: 'Failed to save places data',
+      message: error.message 
+    });
+  }
+});
+
 // HEALTH CHECK
 app.get('/api/health', (req, res) => {
   res.json({
