@@ -164,6 +164,7 @@
             cursor: pointer;
             transition: all 0.3s;
             border: 2px solid transparent;
+            position: relative;
         }
 
         .place-item:hover {
@@ -174,6 +175,11 @@
         .place-item.selected {
             border-color: #3498db;
             background: #ebf5fb;
+        }
+
+        .place-item.hidden {
+            opacity: 0.5;
+            background: #fff3cd;
         }
 
         .place-item-header {
@@ -187,6 +193,12 @@
             font-weight: 600;
             font-size: 16px;
             color: #2c3e50;
+        }
+
+        .place-badges {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
         }
 
         .place-category {
@@ -211,6 +223,33 @@
         .category-lift {
             background: #cce5ff;
             color: #004085;
+        }
+
+        .badge-hidden {
+            background: #ffc107;
+            color: #000;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .badge-manual-photos {
+            background: #17a2b8;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .badge-protected {
+            background: #6c757d;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
         }
 
         .place-meta {
@@ -271,6 +310,15 @@
             margin-bottom: 5px;
         }
 
+        .form-label.protected {
+            color: #6c757d;
+        }
+
+        .form-label.protected::after {
+            content: " 🔒";
+            font-size: 11px;
+        }
+
         .form-control {
             width: 100%;
             padding: 8px 12px;
@@ -283,6 +331,11 @@
         .form-control:focus {
             outline: none;
             border-color: #3498db;
+        }
+
+        .form-control:disabled {
+            background: #e9ecef;
+            cursor: not-allowed;
         }
 
         select.form-control {
@@ -304,6 +357,106 @@
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 15px;
+        }
+
+        .visibility-toggle {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 3px solid #3498db;
+        }
+
+        .visibility-toggle h3 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #27ae60;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-label {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .toggle-label.active {
+            color: #27ae60;
+        }
+
+        .toggle-label.inactive {
+            color: #e74c3c;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
         }
 
         .photo-list {
@@ -399,7 +552,6 @@
             background: #2980b9;
         }
 
-        /* Tags and Arrays */
         .tag-input {
             display: flex;
             flex-wrap: wrap;
@@ -428,7 +580,6 @@
             color: #e74c3c;
         }
 
-        /* Toast Notification */
         .toast {
             position: fixed;
             bottom: 30px;
@@ -457,7 +608,6 @@
             background: #e74c3c;
         }
 
-        /* Checkbox grid */
         .checkbox-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -467,22 +617,6 @@
             border-radius: 6px;
         }
 
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .checkbox-item input {
-            cursor: pointer;
-        }
-
-        .checkbox-item label {
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        /* Save indicator */
         .save-indicator {
             display: inline-block;
             margin-left: 10px;
@@ -498,6 +632,25 @@
         .save-indicator.show {
             opacity: 1;
         }
+
+        .server-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .server-status.loaded {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .server-status.local {
+            background: #fff3cd;
+            color: #856404;
+        }
     </style>
 </head>
 <body>
@@ -505,7 +658,10 @@
         <div class="header">
             <div>
                 <h1>🏔️ Nozawa Onsen Places Admin</h1>
-                <p style="margin-top: 5px; opacity: 0.8;">Manage restaurants, onsens, and lifts</p>
+                <p style="margin-top: 5px; opacity: 0.8;">
+                    Manage restaurants, onsens, and lifts
+                    <span class="server-status local" id="serverStatus">Local Data</span>
+                </p>
             </div>
             <div class="stats">
                 <div class="stat-item">
@@ -524,18 +680,30 @@
                     <div class="stat-number" id="liftCount">0</div>
                     <div>Lifts</div>
                 </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="hiddenCount">0</div>
+                    <div>Hidden</div>
+                </div>
             </div>
         </div>
 
         <div class="controls">
+            <button class="btn btn-primary" onclick="loadFromServer()">
+                📡 Load from Server
+            </button>
+            
+            <button class="btn btn-success" onclick="saveToServer()">
+                💾 Save to Server
+            </button>
+            
+            <button class="btn btn-success" onclick="downloadJSON()">
+                📥 Download Backup
+            </button>
+            
             <label for="fileInput" class="file-upload-label">
                 📤 Upload JSON
             </label>
             <input type="file" id="fileInput" accept=".json">
-            
-            <button class="btn btn-success" onclick="downloadJSON()">
-                📥 Download JSON
-            </button>
             
             <button class="btn btn-warning" onclick="addNewPlace()">
                 ➕ Add New Place
@@ -548,6 +716,7 @@
                 <button class="filter-btn" data-filter="restaurant">Restaurants</button>
                 <button class="filter-btn" data-filter="onsen">Onsens</button>
                 <button class="filter-btn" data-filter="lift">Lifts</button>
+                <button class="filter-btn" data-filter="hidden">Hidden from App</button>
             </div>
         </div>
 
@@ -562,7 +731,7 @@
                 <div class="empty-state">
                     <div class="empty-state-icon">📍</div>
                     <h3>Select a place to edit</h3>
-                    <p>Choose from the list or upload your JSON file to get started</p>
+                    <p>Load data from server or upload JSON file to get started</p>
                 </div>
             </div>
         </div>
@@ -602,9 +771,13 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        const API_BASE = 'https://nozawa-backend-production.up.railway.app';
+        const ADMIN_KEY = 'nozawa2024';
+        
         let placesData = { places: [], total_count: 0 };
         let currentPlace = null;
         let currentFilter = 'all';
+        let dataSource = 'local'; // 'local' or 'server'
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -627,6 +800,81 @@
             });
         });
 
+        // Load data from server
+        async function loadFromServer() {
+            try {
+                showToast('Loading from server...', 'success');
+                
+                const response = await fetch(`${API_BASE}/api/admin/places-data?admin_key=${ADMIN_KEY}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    placesData = result.data;
+                    dataSource = 'server';
+                    updateServerStatus('loaded');
+                    updateStats();
+                    renderPlaceList();
+                    showToast('Data loaded from server successfully!', 'success');
+                } else {
+                    showToast('Failed to load from server', 'error');
+                }
+            } catch (error) {
+                console.error('Load error:', error);
+                showToast('Error connecting to server', 'error');
+            }
+        }
+
+        // Save data to server
+        async function saveToServer() {
+            if (!placesData.places || placesData.places.length === 0) {
+                showToast('No data to save', 'error');
+                return;
+            }
+            
+            if (!confirm('Save changes to server? This will create a backup and update the live data.')) {
+                return;
+            }
+            
+            try {
+                showToast('Saving to server...', 'success');
+                
+                const response = await fetch(`${API_BASE}/api/admin/save-places`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        admin_key: ADMIN_KEY,
+                        data: placesData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    dataSource = 'server';
+                    updateServerStatus('loaded');
+                    showToast(`Saved! Backup: ${result.backup_created}`, 'success');
+                } else {
+                    showToast('Failed to save to server', 'error');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Error saving to server', 'error');
+            }
+        }
+
+        function updateServerStatus(status) {
+            const statusEl = document.getElementById('serverStatus');
+            if (status === 'loaded') {
+                statusEl.textContent = 'Live Server Data';
+                statusEl.className = 'server-status loaded';
+            } else {
+                statusEl.textContent = 'Local Data';
+                statusEl.className = 'server-status local';
+            }
+        }
+
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (file) {
@@ -634,6 +882,8 @@
                 reader.onload = (e) => {
                     try {
                         placesData = JSON.parse(e.target.result);
+                        dataSource = 'local';
+                        updateServerStatus('local');
                         updateStats();
                         renderPlaceList();
                         showToast('JSON loaded successfully!', 'success');
@@ -652,6 +902,7 @@
             document.getElementById('restaurantCount').textContent = places.filter(p => p.category === 'restaurant').length;
             document.getElementById('onsenCount').textContent = places.filter(p => p.category === 'onsen').length;
             document.getElementById('liftCount').textContent = places.filter(p => p.category === 'lift').length;
+            document.getElementById('hiddenCount').textContent = places.filter(p => p.visible_in_app === false).length;
             placesData.total_count = places.length;
         }
 
@@ -665,12 +916,20 @@
             
             listEl.innerHTML = places.map(place => {
                 const name = place.google_data?.name || place.name || 'Unnamed';
-                const status = place.status || 'active';
+                const isHidden = place.visible_in_app === false;
+                const hasManualPhotos = place.manual_photos === true;
+                const hasManualOverrides = place.manual_overrides && Object.keys(place.manual_overrides).length > 0;
+                
                 return `
-                    <div class="place-item ${currentPlace?.id === place.id ? 'selected' : ''}" onclick="selectPlace('${place.id}')">
+                    <div class="place-item ${currentPlace?.id === place.id ? 'selected' : ''} ${isHidden ? 'hidden' : ''}" onclick="selectPlace('${place.id}')">
                         <div class="place-item-header">
                             <div class="place-name">${name}</div>
-                            <span class="place-category category-${place.category}">${place.category}</span>
+                            <div class="place-badges">
+                                <span class="place-category category-${place.category}">${place.category}</span>
+                                ${isHidden ? '<span class="badge-hidden">👁️ Hidden</span>' : ''}
+                                ${hasManualPhotos ? '<span class="badge-manual-photos">📸 Manual</span>' : ''}
+                                ${hasManualOverrides ? '<span class="badge-protected">🔒 Protected</span>' : ''}
+                            </div>
                         </div>
                         <div class="place-meta">
                             <span>${place.id}</span>
@@ -684,7 +943,9 @@
             let filtered = placesData.places || [];
             
             // Apply category filter
-            if (currentFilter !== 'all') {
+            if (currentFilter === 'hidden') {
+                filtered = filtered.filter(p => p.visible_in_app === false);
+            } else if (currentFilter !== 'all') {
                 filtered = filtered.filter(p => p.category === currentFilter);
             }
             
@@ -706,7 +967,6 @@
             currentPlace = placesData.places.find(p => p.id === placeId);
             if (currentPlace) {
                 renderEditor();
-                // Update selected state visually
                 renderPlaceList();
             }
         }
@@ -719,10 +979,18 @@
             const isOnsen = currentPlace.category === 'onsen';
             const isLift = currentPlace.category === 'lift';
             
-            // Get display name
+            // Initialize visible_in_app if not set
+            if (currentPlace.visible_in_app === undefined) {
+                currentPlace.visible_in_app = true;
+            }
+            
+            // Initialize manual_overrides if not set
+            if (!currentPlace.manual_overrides) {
+                currentPlace.manual_overrides = {};
+            }
+            
             const displayName = currentPlace.google_data?.name || currentPlace.name || 'Unnamed Place';
             
-            // Get coordinates
             let lng = '', lat = '';
             if (currentPlace.coordinates) {
                 lng = currentPlace.coordinates[0];
@@ -741,6 +1009,23 @@
                     </div>
                 </div>
                 
+                <!-- Visibility Toggle -->
+                <div class="visibility-toggle">
+                    <h3>👁️ App Visibility Control</h3>
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="visibleInApp" ${currentPlace.visible_in_app ? 'checked' : ''} onchange="toggleVisibility()">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label ${currentPlace.visible_in_app ? 'active' : 'inactive'}" id="visibilityLabel">
+                            ${currentPlace.visible_in_app ? 'Visible in App' : 'Hidden from App'}
+                        </span>
+                    </div>
+                    <p style="margin-top: 10px; font-size: 13px; color: #6c757d;">
+                        ${currentPlace.visible_in_app ? 'This place is currently visible to users in the app.' : 'This place is hidden from the app. Users will not see it.'}
+                    </p>
+                </div>
+                
                 <!-- Basic Information -->
                 <div class="form-section">
                     <h3 class="form-section-title">Basic Information</h3>
@@ -750,10 +1035,17 @@
                             <input type="text" class="form-control" id="name" value="${currentPlace.name || ''}">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">ID (unique identifier)</label>
-                            <input type="text" class="form-control" id="place_id" value="${currentPlace.id || ''}" readonly style="background: #f8f9fa;">
+                            <label class="form-label protected">ID (Google-linked, read-only)</label>
+                            <input type="text" class="form-control" id="place_id" value="${currentPlace.id || ''}" disabled>
                         </div>
                     </div>
+                    
+                    ${currentPlace.google_place_id ? `
+                        <div class="form-group">
+                            <label class="form-label protected">Google Place ID (read-only)</label>
+                            <input type="text" class="form-control" value="${currentPlace.google_place_id}" disabled>
+                        </div>
+                    ` : ''}
                     
                     ${isOnsen ? `
                         <div class="form-group">
@@ -910,6 +1202,16 @@
                     <!-- Onsen Information -->
                     <div class="form-section">
                         <h3 class="form-section-title">Onsen Details</h3>
+                        
+                        <!-- Manual Photos Protection -->
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="manual_photos" ${currentPlace.manual_photos ? 'checked' : ''}>
+                            <label for="manual_photos">📸 Protect Photos from Annual Updates (Manual Photos)</label>
+                        </div>
+                        <p style="margin: 10px 0; font-size: 13px; color: #6c757d;">
+                            When checked, photo URLs will NOT be overwritten during annual updates
+                        </p>
+                        
                         <div class="form-group">
                             <label class="form-label">Description (line breaks preserved)</label>
                             <textarea class="form-control" id="description" rows="6">${currentPlace.description || ''}</textarea>
@@ -1060,6 +1362,28 @@
             }
         }
 
+        function toggleVisibility() {
+            const checkbox = document.getElementById('visibleInApp');
+            const label = document.getElementById('visibilityLabel');
+            
+            currentPlace.visible_in_app = checkbox.checked;
+            
+            // Mark as manually overridden
+            if (!currentPlace.manual_overrides) {
+                currentPlace.manual_overrides = {};
+            }
+            currentPlace.manual_overrides.visible_in_app = true;
+            
+            // Update label
+            if (checkbox.checked) {
+                label.textContent = 'Visible in App';
+                label.className = 'toggle-label active';
+            } else {
+                label.textContent = 'Hidden from App';
+                label.className = 'toggle-label inactive';
+            }
+        }
+
         function renderWarnings() {
             const warnings = currentPlace.local_knowledge?.warnings || [];
             const container = document.getElementById('warningsList');
@@ -1069,7 +1393,7 @@
                 warnings.map(w => `
                     <span class="tag">
                         ${w}
-                        <span class="tag-remove" onclick="removeWarning('${w}')">×</span>
+                        <span class="tag-remove" onclick="removeWarning('${w.replace(/'/g, "\\'")}')">×</span>
                     </span>
                 `).join('') + 
             '</div>';
@@ -1087,6 +1411,11 @@
                         currentPlace.local_knowledge.warnings = [];
                     }
                     currentPlace.local_knowledge.warnings.push(warning);
+                    
+                    // Mark as manually edited
+                    if (!currentPlace.manual_overrides) currentPlace.manual_overrides = {};
+                    currentPlace.manual_overrides.local_knowledge = true;
+                    
                     input.value = '';
                     renderWarnings();
                 }
@@ -1145,7 +1474,7 @@
                 features.map(f => `
                     <span class="tag">
                         ${f}
-                        <span class="tag-remove" onclick="removeFeature('${f}')">×</span>
+                        <span class="tag-remove" onclick="removeFeature('${f.replace(/'/g, "\\'")}')">×</span>
                     </span>
                 `).join('') + 
             '</div>';
@@ -1190,12 +1519,21 @@
             if (!currentPlace) return;
             
             try {
-                // Update basic fields with safety checks
+                // Track which fields were manually edited
+                if (!currentPlace.manual_overrides) {
+                    currentPlace.manual_overrides = {};
+                }
+                
+                // Update basic fields
                 currentPlace.name = getFieldValue('name') || currentPlace.name;
                 currentPlace.category = getFieldValue('category') || currentPlace.category;
                 currentPlace.subcategory = getFieldValue('subcategory') || null;
                 currentPlace.status = getFieldValue('status') || 'active';
                 currentPlace.address = getFieldValue('address') || null;
+                
+                // Mark these as manually edited if changed
+                currentPlace.manual_overrides.subcategory = true;
+                currentPlace.manual_overrides.status = true;
                 
                 // Update coordinates
                 const lng = parseFloat(getFieldValue('longitude'));
@@ -1208,7 +1546,7 @@
                     currentPlace.location.address = currentPlace.address;
                 }
                 
-                // Update rating and review count (available for all categories now)
+                // Update rating and review count
                 const rating = parseFloat(getFieldValue('rating'));
                 const reviewCount = parseInt(getFieldValue('review_count'));
                 
@@ -1245,24 +1583,31 @@
                     currentPlace.local_knowledge.navigation_tips = getFieldValue('navigation_tips') || null;
                     currentPlace.local_knowledge.notes = getFieldValue('notes') || null;
                     
-                    // Verified features
                     if (!currentPlace.local_knowledge.verified_features) currentPlace.local_knowledge.verified_features = {};
                     currentPlace.local_knowledge.verified_features.wifi = getCheckboxValue('vf_wifi');
                     currentPlace.local_knowledge.verified_features.parking = getCheckboxValue('vf_parking');
                     currentPlace.local_knowledge.verified_features.smoking = getCheckboxValue('vf_smoking');
                     currentPlace.local_knowledge.verified_features.reservation = getCheckboxValue('vf_reservation');
+                    
+                    currentPlace.manual_overrides.enhanced_data = true;
+                    currentPlace.manual_overrides.local_knowledge = true;
                 }
                 
                 // Onsen specific
                 if (currentPlace.category === 'onsen') {
                     currentPlace.name_jp = getFieldValue('name_jp') || null;
                     currentPlace.description = getFieldValue('description') || null;
+                    currentPlace.manual_photos = getCheckboxValue('manual_photos');
                     
                     if (!currentPlace.local_info) currentPlace.local_info = {};
                     currentPlace.local_info.entrance_fee = getFieldValue('entrance_fee') || null;
                     currentPlace.local_info.temperature = getFieldValue('temperature') || null;
                     currentPlace.local_info.hours = getFieldValue('hours') || null;
                     currentPlace.local_info.local_tips = getFieldValue('local_tips') || null;
+                    
+                    if (currentPlace.manual_photos) {
+                        currentPlace.manual_overrides.manual_photos = true;
+                    }
                 }
                 
                 // Lift specific
@@ -1287,10 +1632,11 @@
                 // Update last verified
                 currentPlace.last_verified = new Date().toISOString();
                 
-                // Update in data array - THIS IS THE KEY PART
+                // Update in data array
                 const index = placesData.places.findIndex(p => p.id === currentPlace.id);
+
                 if (index !== -1) {
-                    placesData.places[index] = JSON.parse(JSON.stringify(currentPlace)); // Deep copy to ensure updates
+                    placesData.places[index] = JSON.parse(JSON.stringify(currentPlace));
                 }
                 
                 updateStats();
@@ -1360,11 +1706,15 @@
                 category: category,
                 subcategory: category === 'restaurant' ? 'Restaurant' : category === 'onsen' ? 'public_bath' : 'gondola',
                 status: 'active',
+                visible_in_app: true,
                 coordinates: [lng, lat],
                 location: {
                     lat: lat,
                     lng: lng,
                     address: ''
+                },
+                manual_overrides: {
+                    visible_in_app: true
                 },
                 last_verified: new Date().toISOString()
             };
@@ -1380,6 +1730,7 @@
                 newPlace.rating = null;
                 newPlace.review_count = null;
                 newPlace.photos = [];
+                newPlace.manual_photos = false;
                 newPlace.local_info = {
                     entrance_fee: '',
                     temperature: '',
