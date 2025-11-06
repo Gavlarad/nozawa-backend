@@ -7,7 +7,7 @@
       "category": "restaurant",
       "subcategory": "Restaurant",
       "status": "active",
-      "last_verified": "2025-11-06T06:58:32.216Z",
+      "last_verified": "2025-11-06T07:56:45.286Z",
       "coordinates": [
         138.4476483,
         36.923433
@@ -261,7 +261,7 @@
       "category": "restaurant",
       "subcategory": "Restaurant",
       "status": "active",
-      "last_verified": "2025-09-16T23:10:45.820Z",
+      "last_verified": "2025-11-06T08:06:34.377Z",
       "coordinates": [
         138.4458091,
         36.9231403
@@ -355,14 +355,35 @@
               }
             ]
           }
-        }
+        },
+        "cuisine": null,
+        "budget": null,
+        "english_menu": null,
+        "credit_cards": null,
+        "vegetarian_friendly": null
       },
       "local_knowledge": {
         "navigation_tips": null,
         "warnings": [],
         "notes": null,
-        "verified_features": {}
-      }
+        "verified_features": {
+          "wifi": false,
+          "parking": false,
+          "smoking": false,
+          "reservation": false
+        }
+      },
+      "visible_in_app": false,
+      "manual_overrides": {
+        "visible_in_app": true,
+        "subcategory": true,
+        "status": true,
+        "enhanced_data": true,
+        "local_knowledge": true
+      },
+      "address": "9520-2 Toyosato, Nozawaonsen, Shimotakai District, Nagano 389-2502, Japan",
+      "rating": 5,
+      "review_count": 3
     },
     {
       "id": "ChIJgR99LywF9l8Rwe9VOWKHq74",
@@ -483,7 +504,9 @@
         "warnings": [],
         "notes": null,
         "verified_features": {}
-      }
+      },
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "ChIJx7AFYQAF9l8Rl5-Jao7R78I",
@@ -13417,7 +13440,20 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "The hottest and most popular. Try early morning for quieter experience."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "visible_in_app": false,
+      "manual_overrides": {
+        "visible_in_app": true,
+        "subcategory": true,
+        "status": true,
+        "manual_photos": true
+      },
+      "location": {
+        "lng": 138.4479818,
+        "lat": 36.9232081,
+        "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
+      },
+      "last_verified": "2025-11-06T08:07:28.527Z"
     },
     {
       "id": "nozawa_kawaharayu",
@@ -13441,7 +13477,9 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Slightly cooler than Oyu, good for those who find Oyu too hot."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "nozawa_kumanotearayu",
@@ -13465,7 +13503,9 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "One of the quieter baths, good for relaxation."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "nozawa_akihanoyu",
@@ -13489,7 +13529,9 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Popular with locals who come daily."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "nozawa_juodonoyu",
@@ -13681,7 +13723,9 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Beautiful location, worth the walk."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "nozawa_ogama",
@@ -13705,7 +13749,9 @@
         "hours": "24/7 viewing, cooking by locals only",
         "local_tips": "Great photo spot. Watch locals cooking vegetables. Do not touch water!"
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "nozawa_shindennoyu",
@@ -13806,7 +13852,9 @@
         ],
         "access": "Via Yu Road moving walkway from village",
         "built": "1999"
-      }
+      },
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "lift_karasawa_area",
@@ -13832,7 +13880,9 @@
         ],
         "parking": "P2",
         "connects_to": "Nagasaka Link Chairlift to Nagasaka Gondola"
-      }
+      },
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "yu_road_walkway",
