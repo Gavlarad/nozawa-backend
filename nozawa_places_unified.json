@@ -7,7 +7,7 @@
       "category": "restaurant",
       "subcategory": "Restaurant",
       "status": "active",
-      "last_verified": "2025-11-06T07:56:45.286Z",
+      "last_verified": "2025-11-06T08:14:27.925Z",
       "coordinates": [
         138.4476483,
         36.923433
@@ -242,7 +242,7 @@
           "reservation": false
         }
       },
-      "visible_in_app": false,
+      "visible_in_app": true,
       "manual_overrides": {
         "visible_in_app": true,
         "subcategory": true,
@@ -261,7 +261,7 @@
       "category": "restaurant",
       "subcategory": "Restaurant",
       "status": "active",
-      "last_verified": "2025-11-06T08:06:34.377Z",
+      "last_verified": "2025-11-06T08:14:30.806Z",
       "coordinates": [
         138.4458091,
         36.9231403
@@ -373,7 +373,7 @@
           "reservation": false
         }
       },
-      "visible_in_app": false,
+      "visible_in_app": true,
       "manual_overrides": {
         "visible_in_app": true,
         "subcategory": true,
@@ -12761,7 +12761,9 @@
         "warnings": [],
         "notes": null,
         "verified_features": {}
-      }
+      },
+      "visible_in_app": true,
+      "manual_overrides": {}
     },
     {
       "id": "ChIJAyoI-CwF9l8Red_byU_seQ4",
@@ -13441,7 +13443,7 @@
         "local_tips": "The hottest and most popular. Try early morning for quieter experience."
       },
       "manual_photos": true,
-      "visible_in_app": false,
+      "visible_in_app": true,
       "manual_overrides": {
         "visible_in_app": true,
         "subcategory": true,
@@ -13453,7 +13455,7 @@
         "lat": 36.9232081,
         "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
       },
-      "last_verified": "2025-11-06T08:07:28.527Z"
+      "last_verified": "2025-11-06T08:14:36.470Z"
     },
     {
       "id": "nozawa_kawaharayu",
@@ -13808,7 +13810,7 @@
         "connects_to": null,
         "access": null
       },
-      "visible_in_app": false,
+      "visible_in_app": true,
       "manual_overrides": {
         "visible_in_app": true,
         "subcategory": true,
@@ -13822,7 +13824,7 @@
         "lat": 36.9200588,
         "address": null
       },
-      "last_verified": "2025-11-06T06:57:34.758Z"
+      "last_verified": "2025-11-06T08:14:09.140Z"
     },
     {
       "id": "lift_hikage_gondola",
