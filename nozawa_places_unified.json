@@ -7,7 +7,7 @@
       "category": "restaurant",
       "subcategory": "Restaurant",
       "status": "active",
-      "last_verified": "2025-09-16T23:10:40.816Z",
+      "last_verified": "2025-11-06T06:58:32.216Z",
       "coordinates": [
         138.4476483,
         36.923433
@@ -224,14 +224,35 @@
               }
             ]
           }
-        }
+        },
+        "cuisine": null,
+        "budget": null,
+        "english_menu": null,
+        "credit_cards": null,
+        "vegetarian_friendly": null
       },
       "local_knowledge": {
         "navigation_tips": null,
         "warnings": [],
         "notes": null,
-        "verified_features": {}
-      }
+        "verified_features": {
+          "wifi": false,
+          "parking": false,
+          "smoking": false,
+          "reservation": false
+        }
+      },
+      "visible_in_app": false,
+      "manual_overrides": {
+        "visible_in_app": true,
+        "subcategory": true,
+        "status": true,
+        "enhanced_data": true,
+        "local_knowledge": true
+      },
+      "address": "Japan, 〒389-2502 Nagano, Shimotakai District, Nozawaonsen, Toyosato, ９２８２−１ 2F",
+      "rating": 5,
+      "review_count": 47
     },
     {
       "id": "ChIJo3KAMAAF9l8RlFQuS4B_WRA",
@@ -13695,7 +13716,7 @@
       "status": "active",
       "coordinates": [
         138.445057,
-        36.920859    
+        36.920859
       ],
       "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502",
       "rating": null,
@@ -13737,8 +13758,25 @@
           "Free shuttle bus"
         ],
         "parking": "P1 (Blocks A, B, C)",
-        "built": "2020"
-      }
+        "built": "2020",
+        "connects_to": null,
+        "access": null
+      },
+      "visible_in_app": false,
+      "manual_overrides": {
+        "visible_in_app": true,
+        "subcategory": true,
+        "status": true
+      },
+      "subcategory": null,
+      "status": "active",
+      "address": null,
+      "location": {
+        "lng": 138.449797,
+        "lat": 36.9200588,
+        "address": null
+      },
+      "last_verified": "2025-11-06T06:57:34.758Z"
     },
     {
       "id": "lift_hikage_gondola",
@@ -13821,6 +13859,6 @@
       }
     }
   ],
-  "total_count": 96,
+  "total_count": 97,
   "generated_at": "2025-09-16T23:14:42.456Z"
 }
