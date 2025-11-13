@@ -454,7 +454,16 @@ app.get('/api/groups/:code', async (req, res) => {
 // Check-in to a place
 app.post('/api/groups/:code/checkin', async (req, res) => {
   const { code } = req.params;
-  const { deviceId, userName, placeId, placeName } = req.body;
+  const { 
+    deviceId, 
+    userName, 
+    placeId, 
+    placeName,
+    accommodationPlaceId,
+    accommodationCoords,
+    accommodationName,
+    displayAccommodationToGroup
+  } = req.body;
   
   if (!deviceId || !userName || !placeId || !placeName) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -475,9 +484,28 @@ app.post('/api/groups/:code/checkin', async (req, res) => {
     
     // Create new check-in (use provided timestamp or current time)
     const checkedInAt = req.body.timestamp || Date.now();
+    
+    // Prepare accommodation data (store as null if not sharing or not provided)
+    const shouldShareAccommodation = displayAccommodationToGroup === true;
+    const accommodationCoordsStr = (shouldShareAccommodation && accommodationCoords) 
+      ? JSON.stringify(accommodationCoords) 
+      : null;
+    
     const result = await pool.query(
-      'INSERT INTO checkin_new (group_code, user_name, device_id, place_id, place_name, checked_in_at, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [code, userName, deviceId, placeId, placeName, checkedInAt, true]
+      'INSERT INTO checkin_new (group_code, user_name, device_id, place_id, place_name, checked_in_at, is_active, accommodation_place_id, accommodation_coords, accommodation_name, display_accommodation_to_group) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+      [
+        code, 
+        userName, 
+        deviceId, 
+        placeId, 
+        placeName, 
+        checkedInAt, 
+        true,
+        shouldShareAccommodation ? accommodationPlaceId : null,
+        accommodationCoordsStr,
+        shouldShareAccommodation ? accommodationName : null,
+        shouldShareAccommodation
+      ]
     );
     
     console.log(`Check-in: ${userName} at ${placeName} in group ${code}`);
@@ -514,6 +542,67 @@ app.post('/api/groups/:code/checkout', async (req, res) => {
   } catch (error) {
     console.error('Checkout error:', error);
     res.status(500).json({ error: 'Failed to check out' });
+  }
+});
+
+// Update user's accommodation sharing status
+app.put('/api/groups/:code/members/:deviceId/accommodation', async (req, res) => {
+  const { code, deviceId } = req.params;
+  const { 
+    share, 
+    accommodationPlaceId, 
+    accommodationCoords, 
+    accommodationName 
+  } = req.body;
+  
+  try {
+    // Verify group exists
+    const groupCheck = await pool.query('SELECT * FROM groups WHERE code = $1', [code]);
+    if (groupCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    // Prepare data (null if not sharing)
+    const shouldShare = share === true;
+    const accommodationCoordsStr = (shouldShare && accommodationCoords) 
+      ? JSON.stringify(accommodationCoords) 
+      : null;
+    
+    // Update the most recent check-in for this user with accommodation data
+    const result = await pool.query(
+      `UPDATE checkin_new 
+       SET accommodation_place_id = $1,
+           accommodation_coords = $2,
+           accommodation_name = $3,
+           display_accommodation_to_group = $4
+       WHERE group_code = $5 
+       AND device_id = $6
+       AND id = (
+         SELECT id FROM checkin_new 
+         WHERE group_code = $5 AND device_id = $6 
+         ORDER BY checked_in_at DESC LIMIT 1
+       )
+       RETURNING *`,
+      [
+        shouldShare ? accommodationPlaceId : null,
+        accommodationCoordsStr,
+        shouldShare ? accommodationName : null,
+        shouldShare,
+        code,
+        deviceId
+      ]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No check-ins found for this user' });
+    }
+    
+    console.log(`Accommodation updated: ${deviceId} in group ${code}, sharing: ${shouldShare}`);
+    res.json({ success: true, updated: result.rows[0] });
+    
+  } catch (error) {
+    console.error('Update accommodation error:', error);
+    res.status(500).json({ error: 'Failed to update accommodation' });
   }
 });
 
@@ -563,15 +652,20 @@ app.get('/api/groups/:code/members', async (req, res) => {
   const { code } = req.params;
   
   try {
-    // Get unique members who have checked in within last 7 days
+    // Get unique members with their latest accommodation data
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const result = await pool.query(
       `SELECT DISTINCT ON (device_id) 
-       device_id, user_name, MAX(checked_in_at) as last_checkin
+       device_id, 
+       user_name, 
+       checked_in_at as last_checkin,
+       accommodation_place_id,
+       accommodation_coords,
+       accommodation_name,
+       display_accommodation_to_group
        FROM checkin_new 
        WHERE group_code = $1 AND checked_in_at > $2
-       GROUP BY device_id, user_name
-       ORDER BY device_id`,
+       ORDER BY device_id, checked_in_at DESC`,
       [code, sevenDaysAgo]
     );
     
@@ -586,13 +680,30 @@ app.get('/api/groups/:code/members', async (req, res) => {
       activeMap[row.device_id] = row.place_name;
     });
     
-    // Combine member info with active status
-    const membersWithStatus = result.rows.map(member => ({
-      ...member,
-      last_checkin: parseInt(member.last_checkin),
-      currently_at: activeMap[member.device_id] || null,
-      is_checked_in: !!activeMap[member.device_id]
-    }));
+    // Combine member info with active status and accommodation data
+    const membersWithStatus = result.rows.map(member => {
+      // Parse accommodation coords from JSON string to array
+      let accommodationCoords = null;
+      if (member.accommodation_coords) {
+        try {
+          accommodationCoords = JSON.parse(member.accommodation_coords);
+        } catch (e) {
+          console.error('Failed to parse accommodation coords:', e);
+        }
+      }
+      
+      return {
+        device_id: member.device_id,
+        user_name: member.user_name,
+        last_checkin: parseInt(member.last_checkin),
+        currently_at: activeMap[member.device_id] || null,
+        is_checked_in: !!activeMap[member.device_id],
+        // Accommodation fields (only include if sharing)
+        accommodationPlaceId: member.display_accommodation_to_group ? member.accommodation_place_id : null,
+        accommodationCoords: member.display_accommodation_to_group ? accommodationCoords : null,
+        accommodationName: member.display_accommodation_to_group ? member.accommodation_name : null
+      };
+    });
     
     res.json({
       group_code: code,
