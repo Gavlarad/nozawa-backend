@@ -655,17 +655,26 @@ app.get('/api/groups/:code/members', async (req, res) => {
     // Get unique members with their latest accommodation data
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const result = await pool.query(
-      `SELECT DISTINCT ON (device_id) 
-       device_id, 
-       user_name, 
-       checked_in_at as last_checkin,
-       accommodation_place_id,
-       accommodation_coords,
-       accommodation_name,
-       display_accommodation_to_group
-       FROM checkin_new 
-       WHERE group_code = $1 AND checked_in_at > $2
-       ORDER BY device_id, checked_in_at DESC`,
+      `SELECT DISTINCT ON (c1.device_id)
+       c1.device_id,
+       c1.user_name,
+       c1.checked_in_at as last_checkin,
+       COALESCE(c2.accommodation_place_id, c1.accommodation_place_id) as accommodation_place_id,
+       COALESCE(c2.accommodation_coords, c1.accommodation_coords) as accommodation_coords,
+       COALESCE(c2.accommodation_name, c1.accommodation_name) as accommodation_name,
+       COALESCE(c2.display_accommodation_to_group, c1.display_accommodation_to_group) as display_accommodation_to_group
+       FROM checkin_new c1
+       LEFT JOIN LATERAL (
+         SELECT accommodation_place_id, accommodation_coords, accommodation_name, display_accommodation_to_group
+         FROM checkin_new
+         WHERE group_code = $1 
+           AND device_id = c1.device_id
+           AND accommodation_place_id IS NOT NULL
+         ORDER BY checked_in_at DESC
+         LIMIT 1
+       ) c2 ON true
+       WHERE c1.group_code = $1 AND c1.checked_in_at > $2
+       ORDER BY c1.device_id, c1.checked_in_at DESC`,
       [code, sevenDaysAgo]
     );
     
