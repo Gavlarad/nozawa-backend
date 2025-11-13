@@ -84,6 +84,129 @@ app.get('/api/places', (req, res) => {
   }
 });
 
+// ============================================
+// GOOGLE PLACES API ENDPOINTS (for accommodation search)
+// ============================================
+
+// Autocomplete search for accommodations
+app.get('/api/places/autocomplete', async (req, res) => {
+  const { input } = req.query;
+  
+  if (!input || input.trim().length < 2) {
+    return res.status(400).json({ error: 'Search query too short' });
+  }
+  
+  const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+  
+  if (!GOOGLE_API_KEY) {
+    return res.status(500).json({ error: 'Google API key not configured' });
+  }
+  
+  // Nozawa Onsen center coordinates
+  const NOZAWA_CENTER = { lat: 36.923005, lng: 138.446971 };
+  const RADIUS = 5000; // 5km radius
+  
+  try {
+    const fetch = (await import('node-fetch')).default;
+    
+    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
+      `input=${encodeURIComponent(input)}` +
+      `&location=${NOZAWA_CENTER.lat},${NOZAWA_CENTER.lng}` +
+      `&radius=${RADIUS}` +
+      `&key=${GOOGLE_API_KEY}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.status === 'ZERO_RESULTS') {
+      return res.json({ predictions: [], status: 'ZERO_RESULTS' });
+    }
+    
+    if (data.status !== 'OK') {
+      console.error('Google Places API error:', data.status, data.error_message);
+      return res.status(500).json({ 
+        error: 'Google Places API error', 
+        status: data.status,
+        message: data.error_message 
+      });
+    }
+    
+    // Return predictions
+    res.json({
+      predictions: data.predictions.map(p => ({
+        place_id: p.place_id,
+        description: p.description,
+        main_text: p.structured_formatting?.main_text || p.description,
+        secondary_text: p.structured_formatting?.secondary_text || ''
+      })),
+      status: 'OK'
+    });
+    
+  } catch (error) {
+    console.error('Autocomplete error:', error);
+    res.status(500).json({ 
+      error: 'Failed to search accommodations',
+      message: error.message 
+    });
+  }
+});
+
+// Get place details (coordinates, address)
+app.get('/api/places/details', async (req, res) => {
+  const { place_id } = req.query;
+  
+  if (!place_id) {
+    return res.status(400).json({ error: 'place_id required' });
+  }
+  
+  const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+  
+  if (!GOOGLE_API_KEY) {
+    return res.status(500).json({ error: 'Google API key not configured' });
+  }
+  
+  try {
+    const fetch = (await import('node-fetch')).default;
+    
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?` +
+      `place_id=${place_id}` +
+      `&fields=name,formatted_address,geometry` +
+      `&key=${GOOGLE_API_KEY}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.status !== 'OK') {
+      console.error('Google Places Details API error:', data.status);
+      return res.status(500).json({ 
+        error: 'Google Places API error',
+        status: data.status 
+      });
+    }
+    
+    const result = data.result;
+    
+    res.json({
+      place_id: place_id,
+      name: result.name,
+      address: result.formatted_address,
+      coordinates: [
+        result.geometry.location.lng,
+        result.geometry.location.lat
+      ]
+    });
+    
+  } catch (error) {
+    console.error('Place details error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get place details',
+      message: error.message 
+    });
+  }
+});
+
+// ============= END GOOGLE PLACES API =============
+
 // Helper function to check if restaurant is open
 function isRestaurantOpen(restaurant) {
   if (!restaurant.opening_hours || !restaurant.opening_hours.periods) {
