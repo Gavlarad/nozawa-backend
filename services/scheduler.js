@@ -13,8 +13,20 @@ function setLatestScrapeResults(results) {
   scrapeResults = results;
 }
 
+// Safety: Prevent scraping more than once per 5 minutes
+let lastScrapeAttempt = null;
+const MIN_SCRAPE_INTERVAL = 5 * 60 * 1000; // 5 minutes minimum
+
 // Scraping function
 async function performScheduledScrape() {
+  // Safety check: Don't scrape more than once per 5 minutes
+  if (lastScrapeAttempt && (Date.now() - lastScrapeAttempt < MIN_SCRAPE_INTERVAL)) {
+    console.log('[SCHEDULER] Skipping scrape - too soon since last attempt (< 5 min)');
+    return;
+  }
+  
+  lastScrapeAttempt = Date.now();
+  
   if (!scraper.checkIfSkiSeason()) {
     console.log('Outside ski season (Dec 10 - Apr 30), skipping scheduled scrape');
     return;

@@ -16,7 +16,7 @@ const isCacheFresh = (minutes = 10) => {
 // Get lift status
 router.get('/status', async (req, res) => {
   try {
-    // Check scheduler cache first
+    // 1. Check scheduler cache first (primary source)
     const schedulerData = scheduler.getLatestScrapeResults();
     if (schedulerData && schedulerData.lifts) {
       return res.json({
@@ -26,70 +26,36 @@ router.get('/status', async (req, res) => {
       });
     }
     
-    // Fallback to regular cache/scraping
+    // 2. Check local route cache (backup)
     if (cachedData && isCacheFresh(10)) {
       return res.json({
         ...cachedData,
-        cached: true
+        cached: true,
+        source: 'route-cache'
       });
     }
     
-    // Scrape new data
-    const data = await scraper.scrape();
-    
-    if (data.success) {
-      cachedData = data;
-      cacheTime = Date.now();
-    }
-    
-    res.json(data);
-  } catch (error) {
-    // Return test data as fallback
+    // 3. NO CACHE AVAILABLE - Return test data (DO NOT SCRAPE!)
+    console.log('⚠️  No cached lift data available, returning test data');
     const testData = scraper.generateTestData();
-    res.json(testData);
-  }
-});
-
-// Test data endpoint
-router.get('/test', async (req, res) => {
-  const testData = scraper.generateTestData();
-  res.json(testData);
-});
-
-// Manual scrape endpoint
-router.post('/scrape', async (req, res) => {
-  const { apiKey } = req.body;
-  
-  // Check API key for security
-  const validKey = process.env.ADMIN_API_KEY || 'nozawa-admin-2024';
-  if (!apiKey || apiKey !== validKey) {
-    return res.status(401).json({ 
-      error: 'Unauthorized',
-      message: 'Valid API key required' 
+    return res.json({
+      ...testData,
+      cached: false,
+      source: 'test-data',
+      message: 'No cached data available - showing test data'
     });
-  }
-  
-  try {
-    console.log('Manual scrape triggered with valid API key');
-    const data = await scraper.scrape({ forceRun: true });
     
-    // Update cache
-    cachedData = data;
-    cacheTime = Date.now();
-    
-    res.json({ 
-      success: true, 
-      message: 'Manual scrape completed',
-      data 
-    });
   } catch (error) {
-    console.error('Manual scrape failed:', error);
-    res.status(500).json({ 
-      error: 'Manual scrape failed',
-      message: error.message 
+    console.error('Error in /status endpoint:', error);
+    const testData = scraper.generateTestData();
+    res.json({
+      ...testData,
+      error: true,
+      source: 'test-data'
     });
-  }  // <- ADD THIS CLOSING BRACKET FOR CATCH
-});  // <- ADD THIS CLOSING BRACKET FOR /scrape ROUTE
+  }
+});
+
 
 // Get scheduler and system status
 router.get('/status-info', (req, res) => {
