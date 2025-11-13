@@ -155,15 +155,18 @@ class NozawaLiftScraper {
   }
 
   generateTestData() {
+    // Check if we're actually in off-season
+    const isOffSeason = !this.checkIfSkiSeason();
+    
     return {
       lifts: Object.values(this.liftMappings).map(lift => ({
         ...lift,
-        status: Math.random() > 0.3 ? 'open' : 'closed',
-        hours: '8:30-16:30'
+        status: isOffSeason ? 'off-season' : (Math.random() > 0.3 ? 'open' : 'closed'),
+        hours: isOffSeason ? 'Season ended' : '8:30-16:30'
       })),
       scrapedAt: new Date().toISOString(),
       testData: true,
-      isOffSeason: false
+      isOffSeason: isOffSeason
     };
   }
 }
