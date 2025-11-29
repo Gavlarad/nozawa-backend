@@ -4,6 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const scheduler = require('./services/scheduler');
 const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { authenticateAdmin } = require('./middleware/auth');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -826,108 +830,180 @@ app.get('/api/weather/forecast', async (req, res) => {
   }
 });
 
-// ADMIN ENDPOINTS
-app.post('/api/admin/reload-data', async (req, res) => {
-  const { admin_key } = req.body;
-  
-  if (admin_key !== 'nozawa2024') {
-    return res.status(401).json({ error: 'Unauthorized' });
+// ============================================
+// ADMIN AUTHENTICATION & ENDPOINTS
+// ============================================
+
+// Admin login endpoint - returns JWT token
+app.post('/api/admin/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      error: 'Missing credentials',
+      message: 'Email and password are required'
+    });
   }
-  
+
+  try {
+    // Query admin user from database
+    const result = await pool.query(
+      'SELECT id, email, password_hash, name, role, resort_access, active FROM admin_users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'Email or password is incorrect'
+      });
+    }
+
+    const admin = result.rows[0];
+
+    // Check if admin is active
+    if (!admin.active) {
+      return res.status(403).json({
+        error: 'Account disabled',
+        message: 'This admin account has been deactivated'
+      });
+    }
+
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, admin.password_hash);
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: 'Email or password is incorrect'
+      });
+    }
+
+    // Generate JWT token (24 hour expiry)
+    const token = jwt.sign(
+      {
+        id: admin.id,
+        email: admin.email,
+        role: admin.role,
+        resortAccess: admin.resort_access
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    console.log(`Admin login: ${admin.email} (${admin.role})`);
+
+    res.json({
+      success: true,
+      token,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role,
+        resortAccess: admin.resort_access
+      },
+      expiresIn: '24h'
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      error: 'Login failed',
+      message: error.message
+    });
+  }
+});
+
+// Reload restaurant data (JWT protected)
+app.post('/api/admin/reload-data', authenticateAdmin, async (req, res) => {
   await loadRestaurantData();
-  
+
   res.json({
     success: true,
     restaurants_loaded: restaurantsData.length,
-    timestamp: lastDataLoad
+    timestamp: lastDataLoad,
+    admin: req.admin.email
   });
 });
 
-// Get current places data for admin editing
-app.get('/api/admin/places-data', (req, res) => {
-  const { admin_key } = req.query;
-  
-  if (admin_key !== 'nozawa2024') {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  
+// Get current places data for admin editing (JWT protected)
+app.get('/api/admin/places-data', authenticateAdmin, (req, res) => {
   try {
     const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
     const rawData = fs.readFileSync(dataPath, 'utf8');
     const data = JSON.parse(rawData);
-    
+
     res.json({
       success: true,
       data: data,
       loaded_from: 'server',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      admin: req.admin.email
     });
   } catch (error) {
     console.error('Error loading places data:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to load places data',
-      message: error.message 
+      message: error.message
     });
   }
 });
 
-// Save updated places data (with backup)
-app.post('/api/admin/save-places', (req, res) => {
-  const { admin_key, data } = req.body;
-  
-  if (admin_key !== 'nozawa2024') {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  
+// Save updated places data (with backup) (JWT protected)
+app.post('/api/admin/save-places', authenticateAdmin, (req, res) => {
+  const { data } = req.body;
+
   if (!data || !data.places) {
     return res.status(400).json({ error: 'Invalid data format' });
   }
-  
+
   try {
     const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
     const backupDir = path.join(__dirname, 'backups');
-    
+
     // Create backups directory if it doesn't exist
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
     }
-    
+
     // Create timestamped backup of current file
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     const backupPath = path.join(backupDir, `nozawa_places_unified_backup_${timestamp}.json`);
-    
+
     // Read current file and create backup
     if (fs.existsSync(dataPath)) {
       const currentData = fs.readFileSync(dataPath, 'utf8');
       fs.writeFileSync(backupPath, currentData, 'utf8');
-      console.log(`✅ Backup created: ${backupPath}`);
+      console.log(`Backup created: ${backupPath}`);
     }
-    
+
     // Save new data
     const newData = {
       ...data,
       total_count: data.places.length,
       generated_at: new Date().toISOString()
     };
-    
+
     fs.writeFileSync(dataPath, JSON.stringify(newData, null, 2), 'utf8');
-    console.log(`✅ Places data updated: ${data.places.length} places`);
-    
+    console.log(`Places data updated by ${req.admin.email}: ${data.places.length} places`);
+
     // Reload data in memory
     loadRestaurantData();
-    
+
     res.json({
       success: true,
       places_saved: data.places.length,
       backup_created: `nozawa_places_unified_backup_${timestamp}.json`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      admin: req.admin.email
     });
-    
+
   } catch (error) {
     console.error('Error saving places data:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to save places data',
-      message: error.message 
+      message: error.message
     });
   }
 });
