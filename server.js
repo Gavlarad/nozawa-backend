@@ -765,6 +765,41 @@ app.get('/api/groups/:code/members', async (req, res) => {
   }
 });
 
+// Leave a group (deletes all check-ins for this user)
+app.delete('/api/groups/:code/leave', async (req, res) => {
+  const { code } = req.params;
+  const { deviceId } = req.body;
+
+  if (!deviceId) {
+    return res.status(400).json({ error: 'Device ID required' });
+  }
+
+  try {
+    // Delete all check-ins for this device in this group
+    const result = await pool.query(
+      'DELETE FROM checkin_new WHERE group_code = $1 AND device_id = $2 RETURNING *',
+      [code, deviceId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'No check-ins found',
+        message: 'User has no check-ins in this group'
+      });
+    }
+
+    console.log(`Leave group: Device ${deviceId} left group ${code} (${result.rows.length} check-ins deleted)`);
+    res.json({
+      success: true,
+      message: 'Successfully left group',
+      deleted_checkins: result.rows.length
+    });
+  } catch (error) {
+    console.error('Leave group error:', error);
+    res.status(500).json({ error: 'Failed to leave group' });
+  }
+});
+
 // ============= END GROUP MANAGEMENT =============
 
 // ============================================
