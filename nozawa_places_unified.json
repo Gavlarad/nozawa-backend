@@ -910,9 +910,9 @@
       "google_place_id": "ChIJhVfwEfEF9l8RY4UtlsLgGyc",
       "name": "大衆酒場 卯之吉",
       "category": "restaurant",
-      "subcategory": "Restaurant",
+      "subcategory": "Yakitori and Bar",
       "status": "active",
-      "last_verified": "2025-09-16T23:10:46.242Z",
+      "last_verified": "2025-11-20T23:56:42.946Z",
       "coordinates": [
         138.4469415,
         36.9219781
@@ -1089,14 +1089,34 @@
               }
             ]
           }
-        }
+        },
+        "cuisine": "Yakitori",
+        "budget": "¥150-2000",
+        "english_menu": false,
+        "credit_cards": null,
+        "vegetarian_friendly": false
       },
       "local_knowledge": {
         "navigation_tips": null,
         "warnings": [],
         "notes": null,
-        "verified_features": {}
-      }
+        "verified_features": {
+          "wifi": false,
+          "parking": false,
+          "smoking": false,
+          "reservation": false
+        }
+      },
+      "visible_in_app": true,
+      "manual_overrides": {
+        "subcategory": true,
+        "status": true,
+        "enhanced_data": true,
+        "local_knowledge": true
+      },
+      "address": "Japan, 〒389-2502 Nagano, Shimotakai District, Nozawaonsen, 十王堂９５６７",
+      "rating": 4.9,
+      "review_count": 8
     },
     {
       "id": "ChIJ0egA79ca9l8RFP1xkSsDjAE",
@@ -1104,8 +1124,8 @@
       "name": "Organic coffee stand Shizenya",
       "category": "restaurant",
       "subcategory": "Cafe",
-      "status": "active",
-      "last_verified": "2025-09-16T23:10:52.882Z",
+      "status": "closed_temporarily",
+      "last_verified": "2025-11-21T00:00:49.273Z",
       "coordinates": [
         138.4376511,
         36.9132356
@@ -1210,14 +1230,34 @@
               }
             ]
           }
-        }
+        },
+        "cuisine": "Western",
+        "budget": null,
+        "english_menu": true,
+        "credit_cards": null,
+        "vegetarian_friendly": true
       },
       "local_knowledge": {
         "navigation_tips": null,
         "warnings": [],
-        "notes": null,
-        "verified_features": {}
-      }
+        "notes": "Pancakes and pastries",
+        "verified_features": {
+          "wifi": false,
+          "parking": false,
+          "smoking": false,
+          "reservation": false
+        }
+      },
+      "visible_in_app": true,
+      "manual_overrides": {
+        "subcategory": true,
+        "status": true,
+        "enhanced_data": true,
+        "local_knowledge": true
+      },
+      "address": "4841-1 Toyosato, Nozawaonsen, Shimotakai District, Nagano 389-2502, Japan",
+      "rating": 4.9,
+      "review_count": 22
     },
     {
       "id": "ChIJb094Xi4F9l8RZyOSssN3wVU",
@@ -13912,5 +13952,5 @@
     }
   ],
   "total_count": 97,
-  "generated_at": "2025-09-16T23:14:42.456Z"
+  "generated_at": "2025-11-21T00:00:51.766Z"
 }
