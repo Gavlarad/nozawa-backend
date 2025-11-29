@@ -461,4 +461,67 @@ router.get('/health', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/v2/lifts
+ * Get lift status from PostgreSQL
+ *
+ * Returns the latest scraped lift status from the database.
+ * Falls back to in-memory cache if PostgreSQL read is disabled.
+ */
+router.get('/lifts', async (req, res) => {
+  try {
+    // Feature flag check
+    if (process.env.ENABLE_POSTGRES_READ !== 'true') {
+      return res.status(503).json({
+        error: 'PostgreSQL read not enabled',
+        message: 'Use /api/lifts/status instead',
+        hint: 'Set ENABLE_POSTGRES_READ=true to use this endpoint'
+      });
+    }
+
+    // Query PostgreSQL for latest lift status
+    const result = await pool.query(`
+      SELECT
+        lift_data,
+        is_off_season,
+        scraped_at,
+        scraper_version,
+        source_url
+      FROM lift_status_cache
+      WHERE resort_id = $1
+      ORDER BY scraped_at DESC
+      LIMIT 1
+    `, [1]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'No lift data available',
+        message: 'Lift status has not been scraped yet',
+        hint: 'Wait for next scheduled scrape or check /api/lifts/status for cached data'
+      });
+    }
+
+    const data = result.rows[0];
+    const ageMinutes = Math.round((Date.now() - new Date(data.scraped_at)) / 60000);
+
+    res.json({
+      success: true,
+      ...data.lift_data,
+      scrapedAt: data.scraped_at,
+      ageMinutes: ageMinutes,
+      isOffSeason: data.is_off_season,
+      source: 'postgresql',
+      version: data.scraper_version,
+      sourceUrl: data.source_url
+    });
+
+  } catch (error) {
+    console.error('Error fetching lifts from PostgreSQL:', error);
+    res.status(500).json({
+      error: 'Database query failed',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

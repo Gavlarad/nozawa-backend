@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const NozawaLiftScraper = require('../services/liftScraper');
 const scheduler = require('../services/scheduler');
+const { apiLimiter } = require('../middleware/security');
 const scraper = new NozawaLiftScraper();
 let cachedData = null;
 let cacheTime = null;
@@ -13,8 +14,8 @@ const isCacheFresh = (minutes = 10) => {
   return age < minutes * 60 * 1000;
 };
 
-// Get lift status
-router.get('/status', async (req, res) => {
+// Get lift status (rate limited)
+router.get('/status', apiLimiter, async (req, res) => {
   try {
     // 1. Check scheduler cache first (primary source)
     const schedulerData = scheduler.getLatestScrapeResults();
@@ -57,8 +58,8 @@ router.get('/status', async (req, res) => {
 });
 
 
-// Get scheduler and system status
-router.get('/status-info', (req, res) => {
+// Get scheduler and system status (rate limited)
+router.get('/status-info', apiLimiter, (req, res) => {
   const now = new Date();
   const jst = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
   

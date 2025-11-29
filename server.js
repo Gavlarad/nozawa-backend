@@ -1069,6 +1069,81 @@ app.get('/api/admin/validate-data-consistency', adminLimiter, authenticateAdmin,
   }
 });
 
+// Get lift scrape history and monitoring (JWT protected)
+app.get('/api/admin/lift-scrapes', adminLimiter, authenticateAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200); // Max 200
+
+    // Get scrape history from PostgreSQL
+    const result = await pool.query(`
+      SELECT
+        id,
+        scraped_at,
+        is_off_season,
+        scraper_version,
+        source_url,
+        (lift_data->>'lifts')::jsonb as lifts_summary,
+        jsonb_array_length((lift_data->>'lifts')::jsonb) as lift_count
+      FROM lift_status_cache
+      WHERE resort_id = $1
+      ORDER BY scraped_at DESC
+      LIMIT $2
+    `, [1, limit]);
+
+    // Calculate scrape statistics
+    const stats = {
+      totalScrapes: result.rows.length,
+      latestScrape: result.rows[0]?.scraped_at || null,
+      oldestScrape: result.rows[result.rows.length - 1]?.scraped_at || null,
+      offSeasonScrapes: result.rows.filter(r => r.is_off_season).length,
+      inSeasonScrapes: result.rows.filter(r => !r.is_off_season).length,
+      averageLiftCount: result.rows.length > 0
+        ? Math.round(result.rows.reduce((sum, r) => sum + parseInt(r.lift_count || 0), 0) / result.rows.length)
+        : 0
+    };
+
+    // Get current scheduler status
+    const scheduler = require('./services/scheduler');
+    const currentData = scheduler.getLatestScrapeResults();
+    const hasCurrentData = !!currentData;
+    const dataAge = currentData && currentData.scrapedAt
+      ? Math.round((Date.now() - new Date(currentData.scrapedAt)) / 60000)
+      : null;
+
+    res.json({
+      success: true,
+      stats,
+      current: {
+        hasData: hasCurrentData,
+        ageMinutes: dataAge,
+        liftCount: currentData?.lifts?.length || 0,
+        isOffSeason: currentData?.isOffSeason || false,
+        scrapedAt: currentData?.scrapedAt || null
+      },
+      history: result.rows.map(row => ({
+        id: row.id,
+        scrapedAt: row.scraped_at,
+        isOffSeason: row.is_off_season,
+        version: row.scraper_version,
+        sourceUrl: row.source_url,
+        liftCount: parseInt(row.lift_count || 0)
+      })),
+      pagination: {
+        limit,
+        returned: result.rows.length
+      },
+      admin: req.admin.email
+    });
+
+  } catch (error) {
+    console.error('Error fetching lift scrape history:', error);
+    res.status(500).json({
+      error: 'Failed to fetch lift scrape history',
+      message: error.message
+    });
+  }
+});
+
 // HEALTH CHECK
 app.get('/api/health', (req, res) => {
   res.json({
@@ -1099,6 +1174,7 @@ app.get('/', (req, res) => {
         'GET /api/v2/places/:id': 'Get single place (PostgreSQL)',
         'GET /api/v2/places/category/:category': 'Get places by category (PostgreSQL)',
         'GET /api/v2/stats': 'Database statistics (PostgreSQL)',
+        'GET /api/v2/lifts': 'Lift status (PostgreSQL)',
         'GET /api/v2/health': 'PostgreSQL health check',
         note: 'Requires ENABLE_POSTGRES_READ=true'
       },
@@ -1130,8 +1206,8 @@ app.get('/', (req, res) => {
 // START SERVER
 async function startServer() {
   await loadRestaurantData();
-  scheduler.initializeScheduler();
-  
+  await scheduler.initializeScheduler();  // Now async - loads from PostgreSQL
+
   app.listen(PORT, () => {
     console.log('\n🚀 Nozawa Onsen Backend Server');
     console.log('='.repeat(40));
