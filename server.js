@@ -1039,12 +1039,24 @@ app.get('/api/health', (req, res) => {
 const liftRoutes = require('./routes/lifts');
 app.use('/api/lifts', liftRoutes);
 
+// POSTGRESQL-BACKED API (V2)
+const placesRoutes = require('./routes/places');
+app.use('/api/v2', placesRoutes);
+
 // ROOT ENDPOINT
 app.get('/', (req, res) => {
   res.json({
     name: 'Nozawa Onsen API',
-    version: '1.0.0',
+    version: '2.0.0',
     endpoints: {
+      v2: {
+        'GET /api/v2/places': 'List all places (PostgreSQL)',
+        'GET /api/v2/places/:id': 'Get single place (PostgreSQL)',
+        'GET /api/v2/places/category/:category': 'Get places by category (PostgreSQL)',
+        'GET /api/v2/stats': 'Database statistics (PostgreSQL)',
+        'GET /api/v2/health': 'PostgreSQL health check',
+        note: 'Requires ENABLE_POSTGRES_READ=true'
+      },
       restaurants: {
         'GET /api/restaurants': 'Get all restaurants',
         'GET /api/restaurants?category=restaurant': 'Filter by category',
