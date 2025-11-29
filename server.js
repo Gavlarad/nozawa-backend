@@ -1,3 +1,7 @@
+// Environment validation FIRST - before anything else
+const { validateOrExit, getTypedConfig } = require('./config/env-validation');
+const config = validateOrExit(); // Validates and exits if invalid
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -20,7 +24,6 @@ const {
   getHelmetOptions,
   ipBlocker,
 } = require('./middleware/security');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -892,7 +895,7 @@ app.post('/api/admin/login', authLimiter, validateLogin, checkValidation, async 
       });
     }
 
-    // Generate JWT token (24 hour expiry)
+    // Generate JWT token (configurable expiry from env)
     const token = jwt.sign(
       {
         id: admin.id,
@@ -901,7 +904,7 @@ app.post('/api/admin/login', authLimiter, validateLogin, checkValidation, async 
         resortAccess: admin.resort_access
       },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: process.env.JWT_EXPIRY || '24h' }
     );
 
     console.log(`Admin login: ${admin.email} (${admin.role})`);
