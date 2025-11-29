@@ -96,7 +96,8 @@ class WeatherService {
       return {
         ...result,
         source: 'open-meteo',
-        cached: false
+        cached: false,
+        age: 0  // Fresh data, age is 0 seconds
       };
 
     } catch (error) {
