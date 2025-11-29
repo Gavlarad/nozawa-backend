@@ -967,7 +967,7 @@
             currentPlace = placesData.places.find(p => p.id === placeId);
             if (currentPlace) {
                 renderEditor();
-                renderPlaceList();
+                filterPlaces(document.getElementById('searchBox').value);  // ← This respects current filter
             }
         }
 
