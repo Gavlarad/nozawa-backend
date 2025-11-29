@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const fs = require('fs');
 const path = require('path');
 const scheduler = require('./services/scheduler');
@@ -7,6 +8,18 @@ const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { authenticateAdmin } = require('./middleware/auth');
+const {
+  authLimiter,
+  apiLimiter,
+  adminLimiter,
+  getCorsOptions,
+  validateLogin,
+  validateGroupCreation,
+  validateCheckin,
+  checkValidation,
+  getHelmetOptions,
+  ipBlocker,
+} = require('./middleware/security');
 require('dotenv').config();
 
 const app = express();
@@ -43,9 +56,24 @@ pool.connect((err, client, release) => {
   }
 });
 
-// Middleware
-app.use(cors());
+// ============================================
+// SECURITY MIDDLEWARE
+// ============================================
+
+// Security headers
+app.use(helmet(getHelmetOptions()));
+
+// IP blocking (optional)
+app.use(ipBlocker);
+
+// CORS configuration
+app.use(cors(getCorsOptions()));
+
+// Body parsing
 app.use(express.json({ limit: '50mb' }));
+
+// Trust proxy (for Railway deployment)
+app.set('trust proxy', 1);
 
 // Load restaurant data
 let restaurantsData = [];
@@ -66,8 +94,8 @@ function loadRestaurantData() {
   }
 }
 
-// NEW: UNIFIED PLACES ENDPOINT
-app.get('/api/places', (req, res) => {
+// NEW: UNIFIED PLACES ENDPOINT (rate limited)
+app.get('/api/places', apiLimiter, (req, res) => {
   try {
     const placesData = JSON.parse(fs.readFileSync('./nozawa_places_unified.json', 'utf8'));
     let places = placesData.places || [];
@@ -237,8 +265,8 @@ function generateGroupCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// MAIN RESTAURANTS/PLACES ENDPOINT
-app.get('/api/restaurants', (req, res) => {
+// MAIN RESTAURANTS/PLACES ENDPOINT (rate limited)
+app.get('/api/restaurants', apiLimiter, (req, res) => {
   const { 
     category,
     open_now, 
@@ -398,13 +426,9 @@ function getTimeAgo(timestamp) {
   return `${days} days ago`;
 }
 
-// Create a new group
-app.post('/api/groups/create', async (req, res) => {
+// Create a new group (rate limited + validated)
+app.post('/api/groups/create', apiLimiter, validateGroupCreation, checkValidation, async (req, res) => {
   const { deviceId, userName } = req.body;
-  
-  if (!deviceId || !userName) {
-    return res.status(400).json({ error: 'Device ID and user name required' });
-  }
   
   let code;
   let attempts = 0;
@@ -455,23 +479,19 @@ app.get('/api/groups/:code', async (req, res) => {
   }
 });
 
-// Check-in to a place
-app.post('/api/groups/:code/checkin', async (req, res) => {
+// Check-in to a place (rate limited + validated)
+app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidation, async (req, res) => {
   const { code } = req.params;
-  const { 
-    deviceId, 
-    userName, 
-    placeId, 
+  const {
+    deviceId,
+    userName,
+    placeId,
     placeName,
     accommodationPlaceId,
     accommodationCoords,
     accommodationName,
     displayAccommodationToGroup
   } = req.body;
-  
-  if (!deviceId || !userName || !placeId || !placeName) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
   
   try {
     // Verify group exists
@@ -834,16 +854,9 @@ app.get('/api/weather/forecast', async (req, res) => {
 // ADMIN AUTHENTICATION & ENDPOINTS
 // ============================================
 
-// Admin login endpoint - returns JWT token
-app.post('/api/admin/login', async (req, res) => {
+// Admin login endpoint - returns JWT token (rate limited + validated)
+app.post('/api/admin/login', authLimiter, validateLogin, checkValidation, async (req, res) => {
   const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({
-      error: 'Missing credentials',
-      message: 'Email and password are required'
-    });
-  }
 
   try {
     // Query admin user from database
@@ -915,8 +928,8 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Reload restaurant data (JWT protected)
-app.post('/api/admin/reload-data', authenticateAdmin, async (req, res) => {
+// Reload restaurant data (JWT protected + rate limited)
+app.post('/api/admin/reload-data', adminLimiter, authenticateAdmin, async (req, res) => {
   await loadRestaurantData();
 
   res.json({
@@ -927,8 +940,8 @@ app.post('/api/admin/reload-data', authenticateAdmin, async (req, res) => {
   });
 });
 
-// Get current places data for admin editing (JWT protected)
-app.get('/api/admin/places-data', authenticateAdmin, (req, res) => {
+// Get current places data for admin editing (JWT protected + rate limited)
+app.get('/api/admin/places-data', adminLimiter, authenticateAdmin, (req, res) => {
   try {
     const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
     const rawData = fs.readFileSync(dataPath, 'utf8');
@@ -950,8 +963,8 @@ app.get('/api/admin/places-data', authenticateAdmin, (req, res) => {
   }
 });
 
-// Save updated places data (with backup) (JWT protected)
-app.post('/api/admin/save-places', authenticateAdmin, (req, res) => {
+// Save updated places data (with backup) (JWT protected + rate limited)
+app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, (req, res) => {
   const { data } = req.body;
 
   if (!data || !data.places) {
