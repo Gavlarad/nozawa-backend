@@ -966,8 +966,8 @@ app.get('/api/admin/places-data', adminLimiter, authenticateAdmin, (req, res) =>
   }
 });
 
-// Save updated places data (with backup) (JWT protected + rate limited)
-app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, (req, res) => {
+// Save updated places data with dual-write (JWT protected + rate limited)
+app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, async (req, res) => {
   const { data } = req.body;
 
   if (!data || !data.places) {
@@ -975,50 +975,95 @@ app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, (req, res) =
   }
 
   try {
-    const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
-    const backupDir = path.join(__dirname, 'backups');
+    const dualWrite = require('./services/dual-write');
 
-    // Create backups directory if it doesn't exist
-    if (!fs.existsSync(backupDir)) {
-      fs.mkdirSync(backupDir, { recursive: true });
-    }
+    console.log(`\n${'='.repeat(50)}`);
+    console.log(`SAVE PLACES REQUEST`);
+    console.log(`Admin: ${req.admin.email}`);
+    console.log(`Places to save: ${data.places.length}`);
+    console.log(`Dual-write enabled: ${process.env.ENABLE_DUAL_WRITE === 'true'}`);
+    console.log('='.repeat(50));
 
-    // Create timestamped backup of current file
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    const backupPath = path.join(backupDir, `nozawa_places_unified_backup_${timestamp}.json`);
-
-    // Read current file and create backup
-    if (fs.existsSync(dataPath)) {
-      const currentData = fs.readFileSync(dataPath, 'utf8');
-      fs.writeFileSync(backupPath, currentData, 'utf8');
-      console.log(`Backup created: ${backupPath}`);
-    }
-
-    // Save new data
-    const newData = {
-      ...data,
-      total_count: data.places.length,
-      generated_at: new Date().toISOString()
-    };
-
-    fs.writeFileSync(dataPath, JSON.stringify(newData, null, 2), 'utf8');
-    console.log(`Places data updated by ${req.admin.email}: ${data.places.length} places`);
+    // Use dual-write service
+    const result = await dualWrite.dualWritePlaces(data, req.admin.id);
 
     // Reload data in memory
-    loadRestaurantData();
+    await loadRestaurantData();
 
-    res.json({
-      success: true,
+    console.log('='.repeat(50));
+    console.log(`SAVE RESULT:`);
+    console.log(`✓ JSON: ${result.json.success ? 'Success' : 'Failed'}`);
+    console.log(`✓ PostgreSQL: ${result.postgresql.success ? 'Success' : result.postgresql.skipped ? 'Skipped' : 'Failed'}`);
+    console.log('='.repeat(50) + '\n');
+
+    // Build response
+    const response = {
+      success: result.success,
       places_saved: data.places.length,
-      backup_created: `nozawa_places_unified_backup_${timestamp}.json`,
-      timestamp: new Date().toISOString(),
-      admin: req.admin.email
-    });
+      backup_created: result.json.backup,
+      timestamp: result.timestamp,
+      admin: req.admin.email,
+      dual_write: {
+        enabled: result.dualWriteEnabled,
+        json: {
+          success: result.json.success,
+          path: result.json.path
+        },
+        postgresql: {
+          success: result.postgresql.success,
+          updated: result.postgresql.updated,
+          errors: result.postgresql.errors?.length || 0
+        }
+      }
+    };
+
+    // Add warning if PostgreSQL sync failed
+    if (result.warning) {
+      response.warning = result.warning;
+    }
+
+    // Send response with appropriate status code
+    if (result.success) {
+      res.json(response);
+    } else {
+      res.status(500).json({
+        ...response,
+        error: 'Save completed with errors',
+        message: result.error || 'Check dual_write details for more information'
+      });
+    }
 
   } catch (error) {
     console.error('Error saving places data:', error);
     res.status(500).json({
       error: 'Failed to save places data',
+      message: error.message
+    });
+  }
+});
+
+// Validate data consistency between JSON and PostgreSQL (JWT protected)
+app.get('/api/admin/validate-data-consistency', adminLimiter, authenticateAdmin, async (req, res) => {
+  try {
+    const dualWrite = require('./services/dual-write');
+
+    console.log(`\nValidating data consistency...`);
+    const validation = await dualWrite.validateDataConsistency();
+
+    res.json({
+      success: true,
+      consistent: validation.consistent,
+      jsonCount: validation.jsonCount,
+      postgresCount: validation.postgresCount,
+      discrepancies: validation.discrepancies || [],
+      timestamp: new Date().toISOString(),
+      admin: req.admin.email
+    });
+
+  } catch (error) {
+    console.error('Validation error:', error);
+    res.status(500).json({
+      error: 'Validation failed',
       message: error.message
     });
   }
