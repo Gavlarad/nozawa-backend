@@ -72,8 +72,21 @@ app.use(ipBlocker);
 // CORS configuration
 app.use(cors(getCorsOptions()));
 
-// Body parsing
+// Body parsing with error handling
 app.use(express.json({ limit: '50mb' }));
+
+// JSON parsing error handler - catches malformed JSON from clients
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    // Log once without stack trace to reduce noise
+    console.warn(`⚠️  Invalid JSON from ${req.ip} on ${req.method} ${req.path}`);
+    return res.status(400).json({
+      error: 'Invalid JSON',
+      message: 'Request body contains malformed JSON'
+    });
+  }
+  next(err);
+});
 
 // Trust proxy (for Railway deployment)
 app.set('trust proxy', 1);
