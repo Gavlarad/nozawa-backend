@@ -453,8 +453,8 @@ app.post('/api/groups/create', apiLimiter, validateGroupCreation, checkValidatio
     code = generateGroupCode();
     try {
       await pool.query(
-        'INSERT INTO groups (code) VALUES ($1)',
-        [code]
+        'INSERT INTO groups (resort_id, code) VALUES ($1, $2)',
+        [1, code]  // resort_id = 1 (Nozawa Onsen)
       );
       break;
     } catch (e) {
