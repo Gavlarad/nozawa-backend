@@ -106,6 +106,7 @@ const getCorsOptions = () => {
     'https://nozawa.app',
     'https://www.nozawa.app',
     'https://nozawa-frontend.railway.app',
+    'null', // Allow local file:// access for admin.html
     // Add your Railway frontend URL here
   ];
 
@@ -117,6 +118,7 @@ const getCorsOptions = () => {
     'http://localhost:8080',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
+    'null', // Allow local file:// access
   ];
 
   const allowedOrigins = isProduction ? productionOrigins : developmentOrigins;
@@ -126,7 +128,8 @@ const getCorsOptions = () => {
       // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      // Allow null origin (local file:// URLs) or whitelisted origins
+      if (origin === 'null' || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         console.warn(`CORS blocked origin: ${origin}`);
