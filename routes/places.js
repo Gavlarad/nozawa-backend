@@ -524,4 +524,71 @@ router.get('/lifts', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/v2/weather
+ * Get weather from PostgreSQL cache
+ *
+ * Returns the latest cached weather data from the database.
+ * Falls back to in-memory cache if PostgreSQL read is disabled.
+ */
+router.get('/weather', async (req, res) => {
+  try {
+    // Feature flag check
+    if (process.env.ENABLE_POSTGRES_READ !== 'true') {
+      return res.status(503).json({
+        error: 'PostgreSQL read not enabled',
+        message: 'Use /api/weather/current instead',
+        hint: 'Set ENABLE_POSTGRES_READ=true to use this endpoint'
+      });
+    }
+
+    // Query PostgreSQL for latest weather data
+    const result = await pool.query(`
+      SELECT
+        weather_data,
+        snow_line,
+        village_temp_c,
+        summit_temp_c,
+        fetched_at,
+        expires_at,
+        source_url
+      FROM weather_cache
+      WHERE resort_id = $1
+      ORDER BY fetched_at DESC
+      LIMIT 1
+    `, [1]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: 'No weather data available',
+        message: 'Weather has not been fetched yet',
+        hint: 'Check /api/weather/current to trigger a fetch'
+      });
+    }
+
+    const data = result.rows[0];
+    const ageMinutes = Math.round((Date.now() - new Date(data.fetched_at)) / 60000);
+    const isExpired = new Date() > new Date(data.expires_at);
+
+    res.json({
+      success: true,
+      ...data.weather_data,
+      snow_line: data.snow_line,
+      fetchedAt: data.fetched_at,
+      expiresAt: data.expires_at,
+      ageMinutes,
+      expired: isExpired,
+      source: 'postgresql',
+      sourceUrl: data.source_url
+    });
+
+  } catch (error) {
+    console.error('Error fetching weather from PostgreSQL:', error);
+    res.status(500).json({
+      error: 'Database query failed',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

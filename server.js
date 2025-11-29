@@ -754,105 +754,6 @@ app.get('/api/groups/:code/members', async (req, res) => {
 
 // ============= END GROUP MANAGEMENT =============
 
-// WEATHER ENDPOINTS
-async function fetchWeatherData() {
-  const fetch = (await import('node-fetch')).default;
-  
-  const elevations = [
-    { name: 'Village', elevation: 570, lat: 36.9205, lon: 138.4331 },
-    { name: 'Mid-Mountain', elevation: 1200, lat: 36.9305, lon: 138.4331 },
-    { name: 'Summit', elevation: 1650, lat: 36.9405, lon: 138.4331 }
-  ];
-  
-  try {
-    const weatherData = await Promise.all(
-      elevations.map(async (level) => {
-        const url = `https://api.open-meteo.com/v1/forecast?` +
-          `latitude=${level.lat}&longitude=${level.lon}&elevation=${level.elevation}` +
-          `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m` +
-          `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,precipitation_probability_max` +
-          `&timezone=Asia/Tokyo`;
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        return {
-          location: level.name,
-          elevation: level.elevation,
-          current: data.current,
-          daily: data.daily,
-          units: data.current_units
-        };
-      })
-    );
-    
-    return weatherData;
-  } catch (error) {
-    console.error('Weather fetch error:', error);
-    throw error;
-  }
-}
-
-app.get('/api/weather/current', async (req, res) => {
-  try {
-    const weatherData = await fetchWeatherData();
-    
-    let snowLine = 'Unknown';
-    const village = weatherData[0].current.temperature_2m;
-    const summit = weatherData[2].current.temperature_2m;
-    
-    if (village > 2 && summit <= 0) {
-      snowLine = 'Snow above ~1000m';
-    } else if (village <= 0) {
-      snowLine = 'Snow to village level';
-    } else if (summit > 2) {
-      snowLine = 'No snow (too warm)';
-    } else {
-      snowLine = 'Mixed conditions';
-    }
-    
-    res.json({
-      timestamp: new Date().toISOString(),
-      snow_line: snowLine,
-      levels: weatherData
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to fetch weather data',
-      message: error.message 
-    });
-  }
-});
-
-app.get('/api/weather/forecast', async (req, res) => {
-  try {
-    const weatherData = await fetchWeatherData();
-    
-    const forecast = weatherData.map(level => ({
-      location: level.location,
-      elevation: level.elevation,
-      daily_forecast: level.daily.time.map((date, index) => ({
-        date,
-        temp_max: level.daily.temperature_2m_max[index],
-        temp_min: level.daily.temperature_2m_min[index],
-        precipitation: level.daily.precipitation_sum[index],
-        snowfall: level.daily.snowfall_sum[index],
-        precipitation_probability: level.daily.precipitation_probability_max[index]
-      }))
-    }));
-    
-    res.json({
-      timestamp: new Date().toISOString(),
-      forecast
-    });
-  } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to fetch weather forecast',
-      message: error.message 
-    });
-  }
-});
-
 // ============================================
 // ADMIN AUTHENTICATION & ENDPOINTS
 // ============================================
@@ -1159,6 +1060,10 @@ app.get('/api/health', (req, res) => {
 const liftRoutes = require('./routes/lifts');
 app.use('/api/lifts', liftRoutes);
 
+// WEATHER
+const weatherRoutes = require('./routes/weather');
+app.use('/api/weather', weatherRoutes);
+
 // POSTGRESQL-BACKED API (V2)
 const placesRoutes = require('./routes/places');
 app.use('/api/v2', placesRoutes);
@@ -1175,6 +1080,7 @@ app.get('/', (req, res) => {
         'GET /api/v2/places/category/:category': 'Get places by category (PostgreSQL)',
         'GET /api/v2/stats': 'Database statistics (PostgreSQL)',
         'GET /api/v2/lifts': 'Lift status (PostgreSQL)',
+        'GET /api/v2/weather': 'Weather status (PostgreSQL)',
         'GET /api/v2/health': 'PostgreSQL health check',
         note: 'Requires ENABLE_POSTGRES_READ=true'
       },
@@ -1186,8 +1092,9 @@ app.get('/', (req, res) => {
         'GET /api/restaurants/stats': 'Get statistics'
       },
       weather: {
-        'GET /api/weather/current': 'Current conditions',
-        'GET /api/weather/forecast': '7-day forecast'
+        'GET /api/weather/current': 'Current conditions (with caching)',
+        'GET /api/weather/forecast': '7-day forecast (with caching)',
+        'GET /api/weather/cache-status': 'Cache status for monitoring'
       },
       lifts: {
         'GET /api/lifts/status': 'Current lift status'
@@ -1213,7 +1120,7 @@ async function startServer() {
     console.log('='.repeat(40));
     console.log(`📡 Server running on port ${PORT}`);
     console.log(`🍴 Loaded ${restaurantsData.length} restaurants`);
-    console.log(`🌡️  Weather API connected`);
+    console.log(`🌡️  Weather service ready (cached)`);
     console.log(`🎿 Lift status monitoring active`);
     console.log(`👥 Group management ready`);
     console.log('='.repeat(40));
