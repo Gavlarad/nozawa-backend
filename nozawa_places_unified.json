@@ -13495,7 +13495,8 @@
         "lat": 36.9232081,
         "address": "Nozawa Onsen Village, Shimotakai District, Nagano 389-2502"
       },
-      "last_verified": "2025-11-06T08:14:36.470Z"
+      "last_verified": "2025-11-06T08:14:36.470Z",
+      "external_id": "nozawa_oyu"
     },
     {
       "id": "nozawa_kawaharayu",
@@ -13521,7 +13522,8 @@
       },
       "manual_photos": true,
       "visible_in_app": true,
-      "manual_overrides": {}
+      "manual_overrides": {},
+      "external_id": "nozawa_kawahara-yu"
     },
     {
       "id": "nozawa_kumanotearayu",
@@ -13547,7 +13549,8 @@
       },
       "manual_photos": true,
       "visible_in_app": true,
-      "manual_overrides": {}
+      "manual_overrides": {},
+      "external_id": "nozawa_kumanote-ara"
     },
     {
       "id": "nozawa_akihanoyu",
@@ -13573,7 +13576,8 @@
       },
       "manual_photos": true,
       "visible_in_app": true,
-      "manual_overrides": {}
+      "manual_overrides": {},
+      "external_id": "nozawa_akiha-no-yu"
     },
     {
       "id": "nozawa_juodonoyu",
@@ -13597,7 +13601,8 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Spacious compared to other public baths."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_juodo-no-yu"
     },
     {
       "id": "nozawa_matsubanoyu",
@@ -13621,7 +13626,8 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "One of the quieter, more peaceful baths."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_matsuba-no-yu"
     },
     {
       "id": "nozawa_nakanoyu",
@@ -13645,7 +13651,8 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Good for those who find other baths too hot."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_nakao-no-yu"
     },
     {
       "id": "nozawa_shinyu",
@@ -13669,7 +13676,8 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Nice facilities after renovation."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_shinyu"
     },
     {
       "id": "nozawa_kaminoyu",
@@ -13693,7 +13701,8 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Peaceful location near temple area."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_kamitera-yu"
     },
     {
       "id": "nozawa_asagama",
@@ -13717,7 +13726,8 @@
         "hours": "6:00 AM - 10:00 PM",
         "local_tips": "Draws water from the famous Asagama source used for cooking vegetables."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_asagama-no-yu"
     },
     {
       "id": "nozawa_yokochinoyu",
@@ -13741,7 +13751,8 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Hidden gem, less known to tourists."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_yokochi-no-yu"
     },
     {
       "id": "nozawa_takinoyu",
@@ -13767,7 +13778,8 @@
       },
       "manual_photos": true,
       "visible_in_app": true,
-      "manual_overrides": {}
+      "manual_overrides": {},
+      "external_id": "nozawa_taki-no-yu"
     },
     {
       "id": "nozawa_ogama",
@@ -13793,7 +13805,8 @@
       },
       "manual_photos": true,
       "visible_in_app": true,
-      "manual_overrides": {}
+      "manual_overrides": {},
+      "external_id": "nozawa_ogama_cooking_onsen"
     },
     {
       "id": "nozawa_shindennoyu",
@@ -13817,7 +13830,8 @@
         "hours": "5:00 AM - 11:00 PM",
         "local_tips": "Near Shinden bus terminal. Popular with locals, less crowded with tourists. Good for those who find other baths too hot."
       },
-      "manual_photos": true
+      "manual_photos": true,
+      "external_id": "nozawa_shinden-no-yu"
     },
     {
       "id": "lift_nagasaka_gondola",
@@ -13864,7 +13878,8 @@
         "lat": 36.9200588,
         "address": null
       },
-      "last_verified": "2025-11-06T08:14:09.140Z"
+      "last_verified": "2025-11-06T08:14:09.140Z",
+      "external_id": "nozawa_nagasaka_gondola"
     },
     {
       "id": "lift_hikage_gondola",
@@ -13896,7 +13911,8 @@
         "built": "1999"
       },
       "visible_in_app": true,
-      "manual_overrides": {}
+      "manual_overrides": {},
+      "external_id": "nozawa_hikage_gondola"
     },
     {
       "id": "lift_karasawa_area",
@@ -13924,7 +13940,8 @@
         "connects_to": "Nagasaka Link Chairlift to Nagasaka Gondola"
       },
       "visible_in_app": true,
-      "manual_overrides": {}
+      "manual_overrides": {},
+      "external_id": "nozawa_karasawa_area_lower_access"
     },
     {
       "id": "yu_road_walkway",
@@ -13948,7 +13965,8 @@
           "Family-friendly"
         ],
         "connects_to": "Hikage Gondola area"
-      }
+      },
+      "external_id": "nozawa_yu_road_moving_walkway"
     }
   ],
   "total_count": 97,
