@@ -190,6 +190,15 @@ async function writeToPostgreSQL(places, adminId) {
           continue;
         }
 
+        // Update visible_in_app in places table (visibility toggle)
+        if (place.visible_in_app !== undefined) {
+          await client.query(`
+            UPDATE places
+            SET visible_in_app = $1, updated_at = NOW(), updated_by = $2
+            WHERE id = $3
+          `, [place.visible_in_app, adminId, placeId]);
+        }
+
         // Upsert place_overrides (update if exists, insert if not)
         await client.query(`
           INSERT INTO place_overrides (
