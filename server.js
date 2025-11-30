@@ -1036,6 +1036,81 @@ app.get('/api/admin/validate-data-consistency', adminLimiter, authenticateAdmin,
   }
 });
 
+// Update external_ids for onsens and lifts (JWT protected - one-time migration)
+app.post('/api/admin/update-external-ids', adminLimiter, authenticateAdmin, async (req, res) => {
+  console.log(`\nUpdating external_ids for onsens and lifts...`);
+  console.log(`Requested by: ${req.admin.email}`);
+
+  const externalIds = [
+    // Onsens
+    { name: 'Oyu', external_id: 'nozawa_oyu', category: 'onsen' },
+    { name: 'Kawahara-yu', external_id: 'nozawa_kawahara-yu', category: 'onsen' },
+    { name: 'Kumanote-ara', external_id: 'nozawa_kumanote-ara', category: 'onsen' },
+    { name: 'Akiha-no-yu', external_id: 'nozawa_akiha-no-yu', category: 'onsen' },
+    { name: 'Juodo-no-yu', external_id: 'nozawa_juodo-no-yu', category: 'onsen' },
+    { name: 'Matsuba-no-yu', external_id: 'nozawa_matsuba-no-yu', category: 'onsen' },
+    { name: 'Nakao-no-yu', external_id: 'nozawa_nakao-no-yu', category: 'onsen' },
+    { name: 'Shinyu', external_id: 'nozawa_shinyu', category: 'onsen' },
+    { name: 'Kamitera-yu', external_id: 'nozawa_kamitera-yu', category: 'onsen' },
+    { name: 'Asagama-no-yu', external_id: 'nozawa_asagama-no-yu', category: 'onsen' },
+    { name: 'Yokochi-no-yu', external_id: 'nozawa_yokochi-no-yu', category: 'onsen' },
+    { name: 'Taki-no-yu', external_id: 'nozawa_taki-no-yu', category: 'onsen' },
+    { name: 'Ogama (Cooking Onsen)', external_id: 'nozawa_ogama_cooking_onsen', category: 'onsen' },
+    { name: 'Shinden-no-yu', external_id: 'nozawa_shinden-no-yu', category: 'onsen' },
+
+    // Lifts
+    { name: 'Nagasaka Gondola', external_id: 'nozawa_nagasaka_gondola', category: 'lift' },
+    { name: 'Hikage Gondola', external_id: 'nozawa_hikage_gondola', category: 'lift' },
+    { name: 'Karasawa Area (Lower Access)', external_id: 'nozawa_karasawa_area_lower_access', category: 'lift' },
+    { name: 'Yu Road (Moving Walkway)', external_id: 'nozawa_yu_road_moving_walkway', category: 'lift' }
+  ];
+
+  let updated = 0;
+  let notFound = 0;
+  const results = [];
+
+  try {
+    for (const place of externalIds) {
+      const result = await pool.query(
+        'UPDATE places SET external_id = $1, updated_at = NOW() WHERE name = $2 AND category = $3 RETURNING id, name',
+        [place.external_id, place.name, place.category]
+      );
+
+      if (result.rows.length > 0) {
+        console.log(`✅ ${place.name} → ${place.external_id}`);
+        updated++;
+        results.push({ name: place.name, external_id: place.external_id, status: 'updated' });
+      } else {
+        console.log(`⚠️  ${place.name} - not found in PostgreSQL`);
+        notFound++;
+        results.push({ name: place.name, external_id: place.external_id, status: 'not_found' });
+      }
+    }
+
+    console.log(`\n✅ Updated ${updated} places`);
+    if (notFound > 0) {
+      console.log(`⚠️  ${notFound} places not found`);
+    }
+
+    res.json({
+      success: true,
+      updated,
+      notFound,
+      total: externalIds.length,
+      results,
+      admin: req.admin.email,
+      message: `Successfully updated ${updated} places with external_ids`
+    });
+
+  } catch (error) {
+    console.error('❌ Update error:', error);
+    res.status(500).json({
+      error: 'Failed to update external_ids',
+      message: error.message
+    });
+  }
+});
+
 // Get lift scrape history and monitoring (JWT protected)
 app.get('/api/admin/lift-scrapes', adminLimiter, authenticateAdmin, async (req, res) => {
   try {
