@@ -515,13 +515,31 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
     if (groupCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Group not found' });
     }
-    
-    // Auto-checkout any existing active check-ins for this user
+
+    // Check if user is already checked in to the same place
+    const existingCheckin = await pool.query(
+      'SELECT * FROM checkin_new WHERE group_code = $1 AND device_id = $2 AND place_id = $3 AND is_active = true',
+      [code, deviceId, placeId]
+    );
+
+    // If already checked in to the same place, just update the timestamp and return
+    if (existingCheckin.rows.length > 0) {
+      const updatedTimestamp = req.body.timestamp || Date.now();
+      const result = await pool.query(
+        'UPDATE checkin_new SET checked_in_at = $1 WHERE id = $2 RETURNING *',
+        [updatedTimestamp, existingCheckin.rows[0].id]
+      );
+
+      console.log(`Check-in refreshed: ${userName} at ${placeName} in group ${code}`);
+      return res.json({ success: true, checkin: result.rows[0], refreshed: true });
+    }
+
+    // Auto-checkout any existing active check-ins for this user (different place)
     await pool.query(
       'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true',
       [Date.now(), code, deviceId]
     );
-    
+
     // Create new check-in (use provided timestamp or current time)
     const checkedInAt = req.body.timestamp || Date.now();
     
