@@ -623,58 +623,73 @@ app.post('/api/groups/:code/checkout', async (req, res) => {
 // Update user's accommodation sharing status
 app.put('/api/groups/:code/members/:deviceId/accommodation', async (req, res) => {
   const { code, deviceId } = req.params;
-  const { 
-    share, 
-    accommodationPlaceId, 
-    accommodationCoords, 
-    accommodationName 
+  const {
+    share,
+    accommodationPlaceId,
+    accommodationCoords,
+    accommodationName
   } = req.body;
-  
+
   try {
     // Verify group exists
     const groupCheck = await pool.query('SELECT * FROM groups WHERE code = $1', [code]);
     if (groupCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Group not found' });
     }
-    
-    // Prepare data (null if not sharing)
+
+    // Get the user's MOST RECENT active check-in
+    const currentCheckIn = await pool.query(
+      `SELECT id FROM checkin_new
+       WHERE group_code = $1
+         AND device_id = $2
+         AND is_active = true
+       ORDER BY checked_in_at DESC
+       LIMIT 1`,
+      [code, deviceId]
+    );
+
+    if (currentCheckIn.rows.length === 0) {
+      return res.status(404).json({ error: 'No active check-in found' });
+    }
+
+    // ALWAYS update accommodation data regardless of share value
+    // The share flag only controls VISIBILITY, not the data itself
     const shouldShare = share === true;
-    const accommodationCoordsStr = (shouldShare && accommodationCoords) 
-      ? JSON.stringify(accommodationCoords) 
-      : null;
-    
-    // Update the most recent check-in for this user with accommodation data
+    const accommodationCoordsStr = accommodationCoords ? JSON.stringify(accommodationCoords) : null;
+
+    // Update ONLY the most recent active check-in
     const result = await pool.query(
-      `UPDATE checkin_new 
+      `UPDATE checkin_new
        SET accommodation_place_id = $1,
            accommodation_coords = $2,
            accommodation_name = $3,
            display_accommodation_to_group = $4
-       WHERE group_code = $5 
-       AND device_id = $6
-       AND id = (
-         SELECT id FROM checkin_new 
-         WHERE group_code = $5 AND device_id = $6 
-         ORDER BY checked_in_at DESC LIMIT 1
-       )
+       WHERE id = $5
        RETURNING *`,
       [
-        shouldShare ? accommodationPlaceId : null,
+        accommodationPlaceId,
         accommodationCoordsStr,
-        shouldShare ? accommodationName : null,
+        accommodationName,
         shouldShare,
-        code,
-        deviceId
+        currentCheckIn.rows[0].id
       ]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'No check-ins found for this user' });
-    }
-    
-    console.log(`Accommodation updated: ${deviceId} in group ${code}, sharing: ${shouldShare}`);
-    res.json({ success: true, updated: result.rows[0] });
-    
+
+    // Deactivate any other active check-ins for this device in this group
+    // This prevents stale data from appearing
+    await pool.query(
+      `UPDATE checkin_new
+       SET is_active = false
+       WHERE group_code = $1
+         AND device_id = $2
+         AND id != $3
+         AND is_active = true`,
+      [code, deviceId, currentCheckIn.rows[0].id]
+    );
+
+    console.log(`Accommodation updated: ${deviceId} in group ${code} - ${accommodationName || 'none'} (sharing: ${shouldShare})`);
+    res.json({ success: true, updated: result.rows[0], checkInId: currentCheckIn.rows[0].id });
+
   } catch (error) {
     console.error('Update accommodation error:', error);
     res.status(500).json({ error: 'Failed to update accommodation' });
