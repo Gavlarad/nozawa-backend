@@ -252,6 +252,7 @@ const getHelmetOptions = () => {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'", "'unsafe-inline'"], // Allow inline scripts for admin.html
+        scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (onsubmit, onclick, etc.)
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: ["'self'"],
         fontSrc: ["'self'"],
