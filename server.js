@@ -1111,6 +1111,27 @@ app.post('/api/admin/update-external-ids', adminLimiter, authenticateAdmin, asyn
   }
 });
 
+// Migrate review analysis data (JWT protected - one-time)
+app.post('/api/admin/migrate-reviews', adminLimiter, authenticateAdmin, async (req, res) => {
+  try {
+    const { runReviewMigration } = require('./run-review-migration-production');
+    const results = await runReviewMigration(pool);
+
+    res.json({
+      ...results,
+      admin: req.admin.email
+    });
+
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Migration failed',
+      message: error.message
+    });
+  }
+});
+
 // Get lift scrape history and monitoring (JWT protected)
 app.get('/api/admin/lift-scrapes', adminLimiter, authenticateAdmin, async (req, res) => {
   try {
