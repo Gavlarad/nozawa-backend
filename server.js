@@ -578,25 +578,42 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
 app.post('/api/groups/:code/checkout', async (req, res) => {
   const { code } = req.params;
   const { deviceId, placeId } = req.body;
-  
-  if (!deviceId || !placeId) {
-    return res.status(400).json({ error: 'Device ID and place ID required' });
+
+  // Validate deviceId is provided
+  if (!deviceId) {
+    return res.status(400).json({ error: 'Device ID required' });
   }
-  
+
   try {
     // Use provided timestamp or current time
     const checkedOutAt = req.body.timestamp || Date.now();
-    const result = await pool.query(
-      'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true RETURNING *',
-      [checkedOutAt, code, deviceId, placeId]
-    );
-    
+    let result;
+
+    if (placeId) {
+      // Scenario 1: Specific check-out from a location
+      result = await pool.query(
+        'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true RETURNING *',
+        [checkedOutAt, code, deviceId, placeId]
+      );
+      console.log(`Check-out: Device ${deviceId} from ${placeId} in group ${code}`);
+    } else {
+      // Scenario 2: Full group leave - deactivate ALL check-ins for this device in this group
+      result = await pool.query(
+        'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true RETURNING *',
+        [checkedOutAt, code, deviceId]
+      );
+      console.log(`Full group leave: Device ${deviceId} checked out from ALL locations in group ${code} (${result.rowCount} records updated)`);
+    }
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'No active check-in found' });
     }
-    
-    console.log(`Check-out: Device ${deviceId} from ${placeId} in group ${code}`);
-    res.json({ success: true });
+
+    res.json({
+      success: true,
+      message: placeId ? 'Checked out from location' : 'Checked out from group',
+      rowsUpdated: result.rowCount
+    });
   } catch (error) {
     console.error('Checkout error:', error);
     res.status(500).json({ error: 'Failed to check out' });
