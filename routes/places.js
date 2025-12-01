@@ -10,12 +10,65 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 
 // PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+
+// Load onsen local_info data from JSON (temporary until migrated to PostgreSQL)
+let onsenLocalInfo = {};
+try {
+  const jsonPath = path.join(__dirname, '..', 'nozawa_places_unified.json');
+  const rawData = fs.readFileSync(jsonPath, 'utf8');
+  const data = JSON.parse(rawData);
+
+  // Build lookup map: external_id -> local_info
+  data.places.forEach(place => {
+    if (place.category === 'onsen' && place.local_info) {
+      // Use external_id or name as key
+      const key = place.external_id || place.name;
+      onsenLocalInfo[key] = {
+        description: place.description || null,
+        local_tips: place.local_tips || null,
+        local_info: place.local_info
+      };
+    }
+  });
+  console.log(`Loaded local_info for ${Object.keys(onsenLocalInfo).length} onsens`);
+} catch (error) {
+  console.warn('Failed to load onsen local_info from JSON:', error.message);
+}
+
+/**
+ * Enrich place data with onsen-specific fields from JSON
+ */
+function enrichOnsenData(place) {
+  if (place.category !== 'onsen') return place;
+
+  // Try to find local_info by external_id or name
+  const key = place.external_id || place.name;
+  const localData = onsenLocalInfo[key];
+
+  if (localData) {
+    return {
+      ...place,
+      description: localData.description || place.description_override,
+      local_tips: localData.local_tips,
+      local_info: localData.local_info
+    };
+  }
+
+  // Fallback: use description_override and tips from PostgreSQL
+  return {
+    ...place,
+    description: place.description_override,
+    local_tips: Array.isArray(place.tips) && place.tips.length > 0 ? place.tips.join(' ') : null
+  };
+}
 
 /**
  * GET /api/v2/places
@@ -143,10 +196,13 @@ router.get('/places', async (req, res) => {
     const countResult = await pool.query(countQuery, params.slice(0, paramIndex - 1));
     const total = parseInt(countResult.rows[0].total);
 
+    // Enrich onsen data with local_info from JSON
+    const enrichedData = result.rows.map(enrichOnsenData);
+
     // Return results with pagination metadata
     res.json({
       success: true,
-      data: result.rows,
+      data: enrichedData,
       pagination: {
         total,
         limit,
@@ -266,9 +322,12 @@ router.get('/places/:id', async (req, res) => {
       });
     }
 
+    // Enrich onsen data with local_info
+    const enrichedPlace = enrichOnsenData(result.rows[0]);
+
     res.json({
       success: true,
-      data: result.rows[0],
+      data: enrichedPlace,
       source: 'postgresql'
     });
 
@@ -348,11 +407,14 @@ router.get('/places/category/:category', async (req, res) => {
 
     const result = await pool.query(query, [resort_id, category, visible]);
 
+    // Enrich onsen data with local_info
+    const enrichedData = result.rows.map(enrichOnsenData);
+
     res.json({
       success: true,
       category,
-      count: result.rows.length,
-      data: result.rows,
+      count: enrichedData.length,
+      data: enrichedData,
       source: 'postgresql'
     });
 
