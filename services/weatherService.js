@@ -229,8 +229,9 @@ class WeatherService {
           const url = `https://api.open-meteo.com/v1/forecast?` +
             `latitude=${level.lat}&longitude=${level.lon}&elevation=${level.elevation}` +
             `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m` +
+            `&hourly=temperature_2m,precipitation,snowfall,weather_code` +
             `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,precipitation_probability_max` +
-            `&timezone=Asia/Tokyo`;
+            `&timezone=Asia/Tokyo&forecast_days=7`;
 
           const response = await fetch(url);
 
@@ -244,6 +245,7 @@ class WeatherService {
             location: level.name,
             elevation: level.elevation,
             current: data.current,
+            hourly: data.hourly,
             daily: data.daily,
             units: data.current_units
           };
@@ -278,6 +280,32 @@ class WeatherService {
   }
 
   /**
+   * Calculate snowfall for next 24 hours from hourly data
+   * @param {Object} hourlyData - Hourly forecast data
+   * @returns {number} Total snowfall in cm over next 24 hours
+   */
+  calculateNext24HourSnowfall(hourlyData) {
+    if (!hourlyData || !hourlyData.time || !hourlyData.snowfall) {
+      return 0;
+    }
+
+    const now = new Date();
+    let totalSnowfall = 0;
+    let hoursCount = 0;
+
+    for (let i = 0; i < hourlyData.time.length && hoursCount < 24; i++) {
+      const forecastTime = new Date(hourlyData.time[i]);
+
+      if (forecastTime >= now) {
+        totalSnowfall += hourlyData.snowfall[i] || 0;
+        hoursCount++;
+      }
+    }
+
+    return Math.round(totalSnowfall * 10) / 10; // Round to 1 decimal place
+  }
+
+  /**
    * Get forecast data (uses same caching as current weather)
    * @returns {Promise<Object>} Forecast data
    */
@@ -287,6 +315,7 @@ class WeatherService {
     const forecast = weather.levels.map(level => ({
       location: level.location,
       elevation: level.elevation,
+      next_24h_snowfall: this.calculateNext24HourSnowfall(level.hourly),
       daily_forecast: level.daily.time.map((date, index) => ({
         date,
         temp_max: level.daily.temperature_2m_max[index],
