@@ -750,6 +750,7 @@
             </div>
             <form class="login-form" onsubmit="handleLogin(event)">
                 <div class="login-error" id="loginError"></div>
+                <div class="login-error" id="loginDebug" style="background: #fff3cd; color: #856404; display: none;"></div>
                 <div class="form-group">
                     <label class="form-label">Email</label>
                     <input type="email" class="form-control" id="loginEmail" required placeholder="admin@nozawa.com">
@@ -758,7 +759,7 @@
                     <label class="form-label">Password</label>
                     <input type="password" class="form-control" id="loginPassword" required>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;" id="loginButton">Sign In</button>
             </form>
         </div>
     </div>
@@ -926,40 +927,71 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
             const errorEl = document.getElementById('loginError');
+            const debugEl = document.getElementById('loginDebug');
+            const buttonEl = document.getElementById('loginButton');
 
             try {
                 errorEl.classList.remove('show');
+                debugEl.style.display = 'none';
+                buttonEl.disabled = true;
+                buttonEl.textContent = 'Signing in...';
 
-                console.log('Attempting login for:', email);
+                console.log('=== LOGIN ATTEMPT ===');
+                console.log('Email:', email);
+                console.log('API Base:', API_BASE);
+
+                const requestBody = { email, password };
+                console.log('Request body:', requestBody);
 
                 const response = await fetch(`${API_BASE}/api/admin/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify(requestBody)
                 });
 
                 console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-                const result = await response.json();
-                console.log('Response data:', result);
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                    console.log('Parsed response:', result);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}`);
+                }
 
                 if (response.ok && result.success) {
-                    console.log('Login successful!');
+                    console.log('✅ Login successful!');
                     setToken(result.token);
                     setUserEmail(email);
                     showApp();
                 } else {
                     const errorMessage = result.error || result.message || 'Login failed. Please check your credentials.';
-                    console.error('Login failed:', errorMessage);
+                    console.error('❌ Login failed:', errorMessage);
                     errorEl.textContent = errorMessage;
                     errorEl.classList.add('show');
+
+                    // Show debug info
+                    debugEl.textContent = `Debug: Status ${response.status} - ${JSON.stringify(result)}`;
+                    debugEl.style.display = 'block';
                 }
             } catch (error) {
-                console.error('Login error:', error);
-                errorEl.textContent = `Error: ${error.message}. Check console for details.`;
+                console.error('❌ Login error:', error);
+                console.error('Error stack:', error.stack);
+                errorEl.textContent = `Error: ${error.message}`;
                 errorEl.classList.add('show');
+
+                debugEl.textContent = `Debug: ${error.name} - ${error.message}`;
+                debugEl.style.display = 'block';
+            } finally {
+                buttonEl.disabled = false;
+                buttonEl.textContent = 'Sign In';
             }
         }
 
