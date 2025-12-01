@@ -106,6 +106,7 @@ const getCorsOptions = () => {
     'https://nozawa.app',
     'https://www.nozawa.app',
     'https://nozawa-frontend.railway.app',
+    'https://nozawa-backend-production.up.railway.app', // Allow Railway backend itself (for admin.html)
     'null', // Allow local file:// access for admin.html
     // Add your Railway frontend URL here
   ];
