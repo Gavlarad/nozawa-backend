@@ -930,6 +930,8 @@
             try {
                 errorEl.classList.remove('show');
 
+                console.log('Attempting login for:', email);
+
                 const response = await fetch(`${API_BASE}/api/admin/login`, {
                     method: 'POST',
                     headers: {
@@ -938,19 +940,25 @@
                     body: JSON.stringify({ email, password })
                 });
 
+                console.log('Response status:', response.status);
+
                 const result = await response.json();
+                console.log('Response data:', result);
 
                 if (response.ok && result.success) {
+                    console.log('Login successful!');
                     setToken(result.token);
                     setUserEmail(email);
                     showApp();
                 } else {
-                    errorEl.textContent = result.error || 'Login failed. Please check your credentials.';
+                    const errorMessage = result.error || result.message || 'Login failed. Please check your credentials.';
+                    console.error('Login failed:', errorMessage);
+                    errorEl.textContent = errorMessage;
                     errorEl.classList.add('show');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                errorEl.textContent = 'Error connecting to server. Please try again.';
+                errorEl.textContent = `Error: ${error.message}. Check console for details.`;
                 errorEl.classList.add('show');
             }
         }
