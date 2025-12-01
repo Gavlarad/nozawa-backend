@@ -23,24 +23,30 @@ const pool = new Pool({
 let onsenLocalInfo = {};
 try {
   const jsonPath = path.join(__dirname, '..', 'nozawa_places_unified.json');
-  const rawData = fs.readFileSync(jsonPath, 'utf8');
-  const data = JSON.parse(rawData);
+  console.log(`[Onsen Enrichment] Attempting to load JSON from: ${jsonPath}`);
 
-  // Build lookup map: external_id -> local_info
-  data.places.forEach(place => {
-    if (place.category === 'onsen' && place.local_info) {
-      // Use external_id or name as key
-      const key = place.external_id || place.name;
-      onsenLocalInfo[key] = {
-        description: place.description || null,
-        local_tips: place.local_tips || null,
-        local_info: place.local_info
-      };
-    }
-  });
-  console.log(`Loaded local_info for ${Object.keys(onsenLocalInfo).length} onsens`);
+  if (!fs.existsSync(jsonPath)) {
+    console.warn(`[Onsen Enrichment] JSON file not found at ${jsonPath}`);
+  } else {
+    const rawData = fs.readFileSync(jsonPath, 'utf8');
+    const data = JSON.parse(rawData);
+
+    // Build lookup map: external_id -> local_info
+    data.places.forEach(place => {
+      if (place.category === 'onsen' && place.local_info) {
+        // Use external_id or name as key
+        const key = place.external_id || place.name;
+        onsenLocalInfo[key] = {
+          description: place.description || null,
+          local_tips: place.local_tips || null,
+          local_info: place.local_info
+        };
+      }
+    });
+    console.log(`[Onsen Enrichment] ✅ Loaded local_info for ${Object.keys(onsenLocalInfo).length} onsens`);
+  }
 } catch (error) {
-  console.warn('Failed to load onsen local_info from JSON:', error.message);
+  console.error(`[Onsen Enrichment] ❌ Failed to load onsen local_info:`, error.message);
 }
 
 /**
