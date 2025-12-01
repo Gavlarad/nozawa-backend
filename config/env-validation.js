@@ -28,7 +28,6 @@ const OPTIONAL_VARS = {
   JWT_EXPIRY: '24h',
   LOG_LEVEL: 'info',
   ENABLE_REQUEST_LOGGING: 'true',
-  ENABLE_DUAL_WRITE: 'false',
   ENABLE_POSTGRES_READ: 'false',
   AUTH_RATE_LIMIT_MAX: '5',
   AUTH_RATE_LIMIT_WINDOW_MS: '900000', // 15 minutes
@@ -253,7 +252,6 @@ function getTypedConfig() {
     enableRequestLogging: getConfig('ENABLE_REQUEST_LOGGING', 'boolean'),
 
     // Feature Flags
-    enableDualWrite: getConfig('ENABLE_DUAL_WRITE', 'boolean'),
     enablePostgresRead: getConfig('ENABLE_POSTGRES_READ', 'boolean'),
   };
 }

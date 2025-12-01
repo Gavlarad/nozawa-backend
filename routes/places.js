@@ -452,8 +452,7 @@ router.get('/health', async (req, res) => {
       serverTime: result.rows[0].server_time,
       postgresVersion: result.rows[0].postgres_version,
       featureFlags: {
-        postgresRead: process.env.ENABLE_POSTGRES_READ === 'true',
-        dualWrite: process.env.ENABLE_DUAL_WRITE === 'true'
+        postgresRead: process.env.ENABLE_POSTGRES_READ === 'true'
       }
     });
 

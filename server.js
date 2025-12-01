@@ -933,7 +933,7 @@ app.get('/api/admin/places-data', adminLimiter, authenticateAdmin, (req, res) =>
   }
 });
 
-// Save updated places data with dual-write (JWT protected + rate limited)
+// Save updated places data directly to PostgreSQL (JWT protected + rate limited)
 app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, async (req, res) => {
   const { data } = req.body;
 
@@ -942,52 +942,38 @@ app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, async (req, 
   }
 
   try {
-    const dualWrite = require('./services/dual-write');
+    const { savePlacesToPostgreSQL } = require('./services/postgres-write');
 
     console.log(`\n${'='.repeat(50)}`);
-    console.log(`SAVE PLACES REQUEST`);
+    console.log(`SAVE PLACES REQUEST (Direct PostgreSQL)`);
     console.log(`Admin: ${req.admin.email}`);
     console.log(`Places to save: ${data.places.length}`);
-    console.log(`Dual-write enabled: ${process.env.ENABLE_DUAL_WRITE === 'true'}`);
     console.log('='.repeat(50));
 
-    // Use dual-write service
-    const result = await dualWrite.dualWritePlaces(data, req.admin.id);
-
-    // Reload data in memory
-    await loadRestaurantData();
+    // Save directly to PostgreSQL
+    const result = await savePlacesToPostgreSQL(data.places, req.admin.id);
 
     console.log('='.repeat(50));
     console.log(`SAVE RESULT:`);
-    console.log(`✓ JSON: ${result.json.success ? 'Success' : 'Failed'}`);
-    console.log(`✓ PostgreSQL: ${result.postgresql.success ? 'Success' : result.postgresql.skipped ? 'Skipped' : 'Failed'}`);
+    console.log(`✓ PostgreSQL: ${result.success ? 'Success' : 'Failed'}`);
+    console.log(`✓ Updated: ${result.updated} places`);
+    console.log(`✓ Errors: ${result.errors.length}`);
     console.log('='.repeat(50) + '\n');
 
     // Build response
     const response = {
       success: result.success,
-      places_saved: data.places.length,
-      backup_created: result.json.backup,
-      timestamp: result.timestamp,
+      places_saved: result.updated,
+      total_requested: data.places.length,
+      timestamp: new Date().toISOString(),
       admin: req.admin.email,
-      dual_write: {
-        enabled: result.dualWriteEnabled,
-        json: {
-          success: result.json.success,
-          path: result.json.path
-        },
-        postgresql: {
-          success: result.postgresql.success,
-          updated: result.postgresql.updated,
-          errors: result.postgresql.errors?.length || 0
-        }
-      }
+      postgresql: {
+        success: result.success,
+        updated: result.updated,
+        errors: result.errors.length
+      },
+      details: result.errors.length > 0 ? result.errors : undefined
     };
-
-    // Add warning if PostgreSQL sync failed
-    if (result.warning) {
-      response.warning = result.warning;
-    }
 
     // Send response with appropriate status code
     if (result.success) {
@@ -996,7 +982,7 @@ app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, async (req, 
       res.status(500).json({
         ...response,
         error: 'Save completed with errors',
-        message: result.error || 'Check dual_write details for more information'
+        message: result.error || 'Check details for more information'
       });
     }
 
@@ -1009,28 +995,27 @@ app.post('/api/admin/save-places', adminLimiter, authenticateAdmin, async (req, 
   }
 });
 
-// Validate data consistency between JSON and PostgreSQL (JWT protected)
-app.get('/api/admin/validate-data-consistency', adminLimiter, authenticateAdmin, async (req, res) => {
+// Export places data from PostgreSQL to JSON format (JWT protected)
+app.get('/api/admin/export-json', adminLimiter, authenticateAdmin, async (req, res) => {
   try {
-    const dualWrite = require('./services/dual-write');
+    const { exportPlacesToJSON } = require('./services/postgres-write');
 
-    console.log(`\nValidating data consistency...`);
-    const validation = await dualWrite.validateDataConsistency();
+    console.log(`\nExporting places data to JSON format...`);
+    console.log(`Requested by: ${req.admin.email}`);
+
+    const jsonData = await exportPlacesToJSON();
 
     res.json({
       success: true,
-      consistent: validation.consistent,
-      jsonCount: validation.jsonCount,
-      postgresCount: validation.postgresCount,
-      discrepancies: validation.discrepancies || [],
-      timestamp: new Date().toISOString(),
-      admin: req.admin.email
+      ...jsonData,
+      exported_by: req.admin.email,
+      exported_at: new Date().toISOString()
     });
 
   } catch (error) {
-    console.error('Validation error:', error);
+    console.error('Export error:', error);
     res.status(500).json({
-      error: 'Validation failed',
+      error: 'Export failed',
       message: error.message
     });
   }
