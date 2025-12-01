@@ -179,6 +179,11 @@ class WeatherService {
     try {
       const expiresAt = new Date(Date.now() + this.CACHE_LIFETIME);
 
+      // Calculate next 24h snowfall for each elevation
+      const villageSnow24h = this.calculateNext24HourSnowfall(weatherData.levels[0].hourly);
+      const midMountainSnow24h = this.calculateNext24HourSnowfall(weatherData.levels[1].hourly);
+      const summitSnow24h = this.calculateNext24HourSnowfall(weatherData.levels[2].hourly);
+
       await this.pool.query(`
         INSERT INTO weather_cache (
           resort_id,
@@ -186,16 +191,22 @@ class WeatherService {
           snow_line,
           village_temp_c,
           summit_temp_c,
+          village_next_24h_snowfall,
+          mid_mountain_next_24h_snowfall,
+          summit_next_24h_snowfall,
           fetched_at,
           expires_at,
           source_url
-        ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10)
         ON CONFLICT (resort_id)
         DO UPDATE SET
           weather_data = EXCLUDED.weather_data,
           snow_line = EXCLUDED.snow_line,
           village_temp_c = EXCLUDED.village_temp_c,
           summit_temp_c = EXCLUDED.summit_temp_c,
+          village_next_24h_snowfall = EXCLUDED.village_next_24h_snowfall,
+          mid_mountain_next_24h_snowfall = EXCLUDED.mid_mountain_next_24h_snowfall,
+          summit_next_24h_snowfall = EXCLUDED.summit_next_24h_snowfall,
           fetched_at = NOW(),
           expires_at = EXCLUDED.expires_at,
           source_url = EXCLUDED.source_url
@@ -205,11 +216,14 @@ class WeatherService {
         snowLine,
         weatherData.levels[0].current.temperature_2m,
         weatherData.levels[2].current.temperature_2m,
+        villageSnow24h,
+        midMountainSnow24h,
+        summitSnow24h,
         expiresAt,
         'https://api.open-meteo.com'
       ]);
 
-      console.log('✅ Weather data saved to PostgreSQL');
+      console.log(`✅ Weather data saved to PostgreSQL (next 24h: ${summitSnow24h}cm at summit)`);
     } catch (error) {
       console.error('❌ Failed to save weather to PostgreSQL:', error.message);
       // Don't throw - cache save failure shouldn't break the request
