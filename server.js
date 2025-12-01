@@ -1192,6 +1192,11 @@ app.get('/api/admin/lift-scrapes', adminLimiter, authenticateAdmin, async (req, 
   }
 });
 
+// ADMIN INTERFACE (serve static HTML)
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
 // HEALTH CHECK
 app.get('/api/health', (req, res) => {
   res.json({
