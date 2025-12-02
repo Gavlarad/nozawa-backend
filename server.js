@@ -552,7 +552,8 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
       : null;
 
     // Prepare meetup data (NULL = check-in now, timestamp = future meetup)
-    const scheduledTime = scheduledFor ? new Date(scheduledFor) : null;
+    // IMPORTANT: Send ISO string directly to avoid timezone conversion by PostgreSQL
+    const scheduledTime = scheduledFor || null;
     const truncatedNote = meetupNote ? meetupNote.substring(0, 200) : null;
 
     const result = await pool.query(
@@ -576,7 +577,7 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
     
     // Log different message for meetups vs regular check-ins
     if (scheduledTime) {
-      const timeStr = scheduledTime.toLocaleString('en-US', { timeZone: 'Asia/Tokyo', dateStyle: 'short', timeStyle: 'short' });
+      const timeStr = new Date(scheduledTime).toLocaleString('en-US', { timeZone: 'Asia/Tokyo', dateStyle: 'short', timeStyle: 'short' });
       console.log(`Meetup created: ${userName} at ${placeName} scheduled for ${timeStr} in group ${code}`);
     } else {
       console.log(`Check-in: ${userName} at ${placeName} in group ${code}`);
