@@ -724,15 +724,27 @@ app.get('/api/groups/:code/checkins', async (req, res) => {
     );
 
     // Auto-expire meetups past their scheduled time + 2 hour grace period
-    await pool.query(
+    // Calculate expiry threshold (2 hours ago in milliseconds)
+    const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
+    const expiryThresholdDate = new Date(twoHoursAgo);
+
+    const expireResult = await pool.query(
       `UPDATE checkin_new
        SET is_active = false
        WHERE group_code = $1
          AND is_active = true
          AND scheduled_for IS NOT NULL
-         AND scheduled_for < (NOW() - INTERVAL '2 hours')`,
-      [code]
+         AND scheduled_for < $2
+       RETURNING id, place_name, scheduled_for`,
+      [code, expiryThresholdDate]
     );
+
+    if (expireResult.rowCount > 0) {
+      console.log(`[MEETUP EXPIRY] Expired ${expireResult.rowCount} meetup(s) in group ${code}:`);
+      expireResult.rows.forEach(row => {
+        console.log(`  - ID ${row.id}: ${row.place_name} (was scheduled for ${row.scheduled_for})`);
+      });
+    }
 
     // Get all check-ins for this group (last 24 hours)
     const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
