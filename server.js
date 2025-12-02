@@ -506,7 +506,9 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
     accommodationPlaceId,
     accommodationCoords,
     accommodationName,
-    displayAccommodationToGroup
+    displayAccommodationToGroup,
+    scheduledFor,  // NEW: Optional timestamp for future meetup
+    meetupNote     // NEW: Optional note for meetup
   } = req.body;
   
   try {
@@ -542,31 +544,44 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
 
     // Create new check-in (use provided timestamp or current time)
     const checkedInAt = req.body.timestamp || Date.now();
-    
+
     // Prepare accommodation data (store as null if not sharing or not provided)
     const shouldShareAccommodation = displayAccommodationToGroup === true;
-    const accommodationCoordsStr = (shouldShareAccommodation && accommodationCoords) 
-      ? JSON.stringify(accommodationCoords) 
+    const accommodationCoordsStr = (shouldShareAccommodation && accommodationCoords)
+      ? JSON.stringify(accommodationCoords)
       : null;
-    
+
+    // Prepare meetup data (NULL = check-in now, timestamp = future meetup)
+    const scheduledTime = scheduledFor ? new Date(scheduledFor) : null;
+    const truncatedNote = meetupNote ? meetupNote.substring(0, 200) : null;
+
     const result = await pool.query(
-      'INSERT INTO checkin_new (group_code, user_name, device_id, place_id, place_name, checked_in_at, is_active, accommodation_place_id, accommodation_coords, accommodation_name, display_accommodation_to_group) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+      'INSERT INTO checkin_new (group_code, user_name, device_id, place_id, place_name, checked_in_at, is_active, accommodation_place_id, accommodation_coords, accommodation_name, display_accommodation_to_group, scheduled_for, meetup_note) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
       [
-        code, 
-        userName, 
-        deviceId, 
-        placeId, 
-        placeName, 
-        checkedInAt, 
+        code,
+        userName,
+        deviceId,
+        placeId,
+        placeName,
+        checkedInAt,
         true,
         shouldShareAccommodation ? accommodationPlaceId : null,
         accommodationCoordsStr,
         shouldShareAccommodation ? accommodationName : null,
-        shouldShareAccommodation
+        shouldShareAccommodation,
+        scheduledTime,  // NEW: Future meetup time or NULL
+        truncatedNote   // NEW: Meetup note (max 200 chars)
       ]
     );
     
-    console.log(`Check-in: ${userName} at ${placeName} in group ${code}`);
+    // Log different message for meetups vs regular check-ins
+    if (scheduledTime) {
+      const timeStr = scheduledTime.toLocaleString('en-US', { timeZone: 'Asia/Tokyo', dateStyle: 'short', timeStyle: 'short' });
+      console.log(`Meetup created: ${userName} at ${placeName} scheduled for ${timeStr} in group ${code}`);
+    } else {
+      console.log(`Check-in: ${userName} at ${placeName} in group ${code}`);
+    }
+
     res.json({ success: true, checkin: result.rows[0] });
   } catch (error) {
     console.error('Check-in error:', error);
@@ -699,15 +714,26 @@ app.put('/api/groups/:code/members/:deviceId/accommodation', async (req, res) =>
 // Get group check-ins (with auto-expire)
 app.get('/api/groups/:code/checkins', async (req, res) => {
   const { code } = req.params;
-  
+
   try {
     // Auto-expire check-ins older than 1 hour that haven't been manually checked out
     const oneHourAgo = Date.now() - (60 * 60 * 1000);
     await pool.query(
-      'UPDATE checkin_new SET is_active = false WHERE group_code = $1 AND checked_in_at < $2 AND is_active = true AND checked_out_at IS NULL',
+      'UPDATE checkin_new SET is_active = false WHERE group_code = $1 AND checked_in_at < $2 AND is_active = true AND checked_out_at IS NULL AND scheduled_for IS NULL',
       [code, oneHourAgo]
     );
-    
+
+    // Auto-expire meetups past their scheduled time + 2 hour grace period
+    await pool.query(
+      `UPDATE checkin_new
+       SET is_active = false
+       WHERE group_code = $1
+         AND is_active = true
+         AND scheduled_for IS NOT NULL
+         AND scheduled_for < (NOW() - INTERVAL '2 hours')`,
+      [code]
+    );
+
     // Get all check-ins for this group (last 7 days for history)
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const result = await pool.query(
@@ -740,7 +766,7 @@ app.get('/api/groups/:code/checkins', async (req, res) => {
 // Get member list for a group
 app.get('/api/groups/:code/members', async (req, res) => {
   const { code } = req.params;
-  
+
   try {
     // Get unique members with their latest accommodation data
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
@@ -757,7 +783,7 @@ app.get('/api/groups/:code/members', async (req, res) => {
        LEFT JOIN LATERAL (
          SELECT accommodation_place_id, accommodation_coords, accommodation_name, display_accommodation_to_group
          FROM checkin_new
-         WHERE group_code = $1 
+         WHERE group_code = $1
            AND device_id = c1.device_id
            AND accommodation_place_id IS NOT NULL
          ORDER BY checked_in_at DESC
@@ -767,18 +793,38 @@ app.get('/api/groups/:code/members', async (req, res) => {
        ORDER BY c1.device_id, c1.checked_in_at DESC`,
       [code, sevenDaysAgo]
     );
-    
-    // Get currently active check-ins for each member
+
+    // Get currently active check-ins for each member (scheduled_for IS NULL = check-in now)
     const activeResult = await pool.query(
-      'SELECT device_id, place_name FROM checkin_new WHERE group_code = $1 AND is_active = true',
+      'SELECT device_id, place_name FROM checkin_new WHERE group_code = $1 AND is_active = true AND scheduled_for IS NULL',
       [code]
     );
-    
+
     const activeMap = {};
     activeResult.rows.forEach(row => {
       activeMap[row.device_id] = row.place_name;
     });
-    
+
+    // Get future meetups (scheduled_for IS NOT NULL and in future)
+    const meetupsResult = await pool.query(
+      `SELECT
+        id,
+        device_id,
+        user_name,
+        place_id,
+        place_name,
+        scheduled_for,
+        meetup_note,
+        checked_in_at as created_at
+       FROM checkin_new
+       WHERE group_code = $1
+         AND is_active = true
+         AND scheduled_for IS NOT NULL
+         AND scheduled_for > NOW()
+       ORDER BY scheduled_for ASC`,
+      [code]
+    );
+
     // Combine member info with active status and accommodation data
     const membersWithStatus = result.rows.map(member => {
       // Parse accommodation coords from JSON string to array
@@ -790,7 +836,7 @@ app.get('/api/groups/:code/members', async (req, res) => {
           console.error('Failed to parse accommodation coords:', e);
         }
       }
-      
+
       return {
         device_id: member.device_id,
         user_name: member.user_name,
@@ -803,11 +849,27 @@ app.get('/api/groups/:code/members', async (req, res) => {
         accommodationName: member.display_accommodation_to_group ? member.accommodation_name : null
       };
     });
-    
+
+    // Format meetups for frontend
+    const meetups = meetupsResult.rows.map(meetup => ({
+      id: meetup.id,
+      deviceId: meetup.device_id,
+      username: meetup.user_name,
+      place: {
+        id: meetup.place_id,
+        name: meetup.place_name
+      },
+      scheduledFor: meetup.scheduled_for.toISOString(),
+      note: meetup.meetup_note,
+      createdAt: new Date(parseInt(meetup.created_at)).toISOString()
+    }));
+
     res.json({
       group_code: code,
       members: membersWithStatus,
-      count: membersWithStatus.length
+      meetups: meetups,
+      count: membersWithStatus.length,
+      meetup_count: meetups.length
     });
   } catch (error) {
     console.error('Error fetching members:', error);
