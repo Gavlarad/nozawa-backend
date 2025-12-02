@@ -1328,7 +1328,7 @@ app.get('/api/health', async (req, res) => {
       server_time: new Date().toISOString(),
       timezone: 'Asia/Tokyo',
       database: {
-        session_timezone: tzResult.rows[0].timezone,
+        session_timezone: tzResult.rows[0], // Return full row to see field names
         scheduled_for_column: typeResult.rows[0]
       }
     });
