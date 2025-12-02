@@ -556,6 +556,12 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
     const scheduledTime = scheduledFor || null;
     const truncatedNote = meetupNote ? meetupNote.substring(0, 200) : null;
 
+    // DEBUG: Log what we received
+    if (scheduledFor) {
+      console.log(`[DEBUG] Received scheduledFor from frontend: "${scheduledFor}" (type: ${typeof scheduledFor})`);
+      console.log(`[DEBUG] Will store in DB: "${scheduledTime}" (type: ${typeof scheduledTime})`);
+    }
+
     const result = await pool.query(
       'INSERT INTO checkin_new (group_code, user_name, device_id, place_id, place_name, checked_in_at, is_active, accommodation_place_id, accommodation_coords, accommodation_name, display_accommodation_to_group, scheduled_for, meetup_note) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *',
       [
@@ -1305,14 +1311,37 @@ app.get('/admin', (req, res) => {
 });
 
 // HEALTH CHECK
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    restaurants_loaded: restaurantsData.length,
-    data_loaded_at: lastDataLoad,
-    server_time: new Date().toISOString(),
-    timezone: 'Asia/Tokyo'
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const tzResult = await pool.query('SHOW TIMEZONE');
+    const typeResult = await pool.query(`
+      SELECT column_name, data_type, udt_name
+      FROM information_schema.columns
+      WHERE table_name = 'checkin_new'
+      AND column_name = 'scheduled_for'
+    `);
+
+    res.json({
+      status: 'healthy',
+      restaurants_loaded: restaurantsData.length,
+      data_loaded_at: lastDataLoad,
+      server_time: new Date().toISOString(),
+      timezone: 'Asia/Tokyo',
+      database: {
+        session_timezone: tzResult.rows[0].timezone,
+        scheduled_for_column: typeResult.rows[0]
+      }
+    });
+  } catch (error) {
+    res.json({
+      status: 'healthy',
+      restaurants_loaded: restaurantsData.length,
+      data_loaded_at: lastDataLoad,
+      server_time: new Date().toISOString(),
+      timezone: 'Asia/Tokyo',
+      database_error: error.message
+    });
+  }
 });
 
 // LIFT STATUS
