@@ -734,11 +734,11 @@ app.get('/api/groups/:code/checkins', async (req, res) => {
       [code]
     );
 
-    // Get all check-ins for this group (last 7 days for history)
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    // Get all check-ins for this group (last 24 hours)
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
     const result = await pool.query(
       'SELECT * FROM checkin_new WHERE group_code = $1 AND checked_in_at > $2 ORDER BY checked_in_at DESC',
-      [code, sevenDaysAgo]
+      [code, oneDayAgo]
     );
     
     // Format the timestamps for frontend
@@ -768,8 +768,8 @@ app.get('/api/groups/:code/members', async (req, res) => {
   const { code } = req.params;
 
   try {
-    // Get unique members with their latest accommodation data
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    // Get unique members with their latest accommodation data (last 24 hours)
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
     const result = await pool.query(
       `SELECT DISTINCT ON (c1.device_id)
        c1.device_id,
@@ -791,7 +791,7 @@ app.get('/api/groups/:code/members', async (req, res) => {
        ) c2 ON true
        WHERE c1.group_code = $1 AND c1.checked_in_at > $2
        ORDER BY c1.device_id, c1.checked_in_at DESC`,
-      [code, sevenDaysAgo]
+      [code, oneDayAgo]
     );
 
     // Get currently active check-ins for each member (scheduled_for IS NULL = check-in now)
