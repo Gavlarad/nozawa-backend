@@ -536,13 +536,16 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
       return res.json({ success: true, checkin: result.rows[0], refreshed: true });
     }
 
-    // Auto-checkout any existing active check-ins for this user (different place)
-    // IMPORTANT: Only checkout regular check-ins (scheduled_for IS NULL)
-    // Do NOT cancel future meetups (scheduled_for IS NOT NULL)
-    await pool.query(
-      'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true AND scheduled_for IS NULL',
-      [Date.now(), code, deviceId]
-    );
+    // Auto-checkout logic: Only auto-checkout when creating a REGULAR check-in
+    // When creating a MEETUP (scheduledFor is set), do NOT checkout current location
+    // This allows users to remain checked in while scheduling future meetups
+    if (!scheduledFor) {
+      // Regular check-in: auto-checkout any existing active check-ins (different place)
+      await pool.query(
+        'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true AND scheduled_for IS NULL',
+        [Date.now(), code, deviceId]
+      );
+    }
 
     // Create new check-in (use provided timestamp or current time)
     const checkedInAt = req.body.timestamp || Date.now();
