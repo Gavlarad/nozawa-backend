@@ -1310,6 +1310,32 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
+// DEBUG TIMEZONE ENDPOINT
+app.get('/api/debug/timezone', async (req, res) => {
+  try {
+    const tests = await pool.query(`
+      SELECT
+        current_setting('TIMEZONE') as session_timezone,
+        NOW() as now_with_tz,
+        NOW()::timestamp as now_without_tz,
+        '2025-12-03T09:00:00.000Z'::timestamp as test_input,
+        '2025-12-03T09:00:00.000Z'::timestamptz as test_input_with_tz
+    `);
+
+    res.json({
+      session_timezone: tests.rows[0].session_timezone,
+      now_with_tz: tests.rows[0].now_with_tz,
+      now_without_tz: tests.rows[0].now_without_tz,
+      test_input: tests.rows[0].test_input,
+      test_input_with_tz: tests.rows[0].test_input_with_tz,
+      nodejs_timezone: process.env.TZ || 'not set',
+      nodejs_date: new Date().toString()
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
 // HEALTH CHECK
 app.get('/api/health', async (req, res) => {
   try {
