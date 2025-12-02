@@ -537,8 +537,10 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
     }
 
     // Auto-checkout any existing active check-ins for this user (different place)
+    // IMPORTANT: Only checkout regular check-ins (scheduled_for IS NULL)
+    // Do NOT cancel future meetups (scheduled_for IS NOT NULL)
     await pool.query(
-      'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true',
+      'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true AND scheduled_for IS NULL',
       [Date.now(), code, deviceId]
     );
 
