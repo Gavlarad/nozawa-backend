@@ -519,8 +519,9 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
     }
 
     // Check if user is already checked in to the same place
+    // ONLY check for regular check-ins (scheduled_for IS NULL), ignore meetups
     const existingCheckin = await pool.query(
-      'SELECT * FROM checkin_new WHERE group_code = $1 AND device_id = $2 AND place_id = $3 AND is_active = true',
+      'SELECT * FROM checkin_new WHERE group_code = $1 AND device_id = $2 AND place_id = $3 AND is_active = true AND scheduled_for IS NULL',
       [code, deviceId, placeId]
     );
 
