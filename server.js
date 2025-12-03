@@ -618,13 +618,15 @@ app.post('/api/groups/:code/checkout', async (req, res) => {
 
     if (placeId) {
       // Scenario 1: Specific check-out from a location
+      // ONLY checkout regular check-ins (scheduled_for IS NULL), NOT future meetups
       result = await pool.query(
-        'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true RETURNING *',
+        'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true AND scheduled_for IS NULL RETURNING *',
         [checkedOutAt, code, deviceId, placeId]
       );
-      console.log(`Check-out: Device ${deviceId} from ${placeId} in group ${code}`);
+      console.log(`Check-out: Device ${deviceId} from ${placeId} in group ${code} (regular check-in only, preserving future meetups)`);
     } else {
       // Scenario 2: Full group leave - deactivate ALL check-ins for this device in this group
+      // Including both regular check-ins AND future meetups
       result = await pool.query(
         'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND is_active = true RETURNING *',
         [checkedOutAt, code, deviceId]
