@@ -605,7 +605,7 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
 // Check-out from a place
 app.post('/api/groups/:code/checkout', async (req, res) => {
   const { code } = req.params;
-  const { deviceId, placeId } = req.body;
+  const { deviceId, placeId, cancelMeetup } = req.body;
 
   // Validate deviceId is provided
   if (!deviceId) {
@@ -618,13 +618,22 @@ app.post('/api/groups/:code/checkout', async (req, res) => {
     let result;
 
     if (placeId) {
-      // Scenario 1: Specific check-out from a location
-      // ONLY checkout regular check-ins (scheduled_for IS NULL), NOT future meetups
-      result = await pool.query(
-        'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true AND scheduled_for IS NULL RETURNING *',
-        [checkedOutAt, code, deviceId, placeId]
-      );
-      console.log(`Check-out: Device ${deviceId} from ${placeId} in group ${code} (regular check-in only, preserving future meetups)`);
+      if (cancelMeetup) {
+        // Scenario 1a: Cancel a specific meetup (scheduled_for IS NOT NULL)
+        result = await pool.query(
+          'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true AND scheduled_for IS NOT NULL RETURNING *',
+          [checkedOutAt, code, deviceId, placeId]
+        );
+        console.log(`Meetup canceled: Device ${deviceId} canceled meetup at ${placeId} in group ${code}`);
+      } else {
+        // Scenario 1b: Regular check-out from a location
+        // ONLY checkout regular check-ins (scheduled_for IS NULL), NOT future meetups
+        result = await pool.query(
+          'UPDATE checkin_new SET is_active = false, checked_out_at = $1 WHERE group_code = $2 AND device_id = $3 AND place_id = $4 AND is_active = true AND scheduled_for IS NULL RETURNING *',
+          [checkedOutAt, code, deviceId, placeId]
+        );
+        console.log(`Check-out: Device ${deviceId} from ${placeId} in group ${code} (regular check-in only, preserving future meetups)`);
+      }
     } else {
       // Scenario 2: Full group leave - deactivate ALL check-ins for this device in this group
       // Including both regular check-ins AND future meetups
@@ -636,12 +645,14 @@ app.post('/api/groups/:code/checkout', async (req, res) => {
     }
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'No active check-in found' });
+      return res.status(404).json({
+        error: cancelMeetup ? 'No active meetup found' : 'No active check-in found'
+      });
     }
 
     res.json({
       success: true,
-      message: placeId ? 'Checked out from location' : 'Checked out from group',
+      message: cancelMeetup ? 'Meetup cancelled' : (placeId ? 'Checked out from location' : 'Checked out from group'),
       rowsUpdated: result.rowCount
     });
   } catch (error) {
