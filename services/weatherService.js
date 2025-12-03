@@ -294,11 +294,12 @@ class WeatherService {
   }
 
   /**
-   * Calculate snowfall for next 24 hours from hourly data
+   * Calculate snowfall for a given number of hours from hourly data
    * @param {Object} hourlyData - Hourly forecast data
-   * @returns {number} Total snowfall in cm over next 24 hours
+   * @param {number} hours - Number of hours to sum (24, 48, or 72)
+   * @returns {number} Total snowfall in cm over the specified hours
    */
-  calculateNext24HourSnowfall(hourlyData) {
+  calculateSnowfallForHours(hourlyData, hours) {
     if (!hourlyData || !hourlyData.time || !hourlyData.snowfall) {
       return 0;
     }
@@ -307,7 +308,7 @@ class WeatherService {
     let totalSnowfall = 0;
     let hoursCount = 0;
 
-    for (let i = 0; i < hourlyData.time.length && hoursCount < 24; i++) {
+    for (let i = 0; i < hourlyData.time.length && hoursCount < hours; i++) {
       const forecastTime = new Date(hourlyData.time[i]);
 
       if (forecastTime >= now) {
@@ -320,6 +321,86 @@ class WeatherService {
   }
 
   /**
+   * Calculate snowfall for next 24 hours from hourly data
+   * @param {Object} hourlyData - Hourly forecast data
+   * @returns {number} Total snowfall in cm over next 24 hours
+   */
+  calculateNext24HourSnowfall(hourlyData) {
+    return this.calculateSnowfallForHours(hourlyData, 24);
+  }
+
+  /**
+   * Calculate snowfall for next 48 hours from hourly data
+   * @param {Object} hourlyData - Hourly forecast data
+   * @returns {number} Total snowfall in cm over next 48 hours
+   */
+  calculateNext48HourSnowfall(hourlyData) {
+    return this.calculateSnowfallForHours(hourlyData, 48);
+  }
+
+  /**
+   * Calculate snowfall for next 72 hours from hourly data
+   * @param {Object} hourlyData - Hourly forecast data
+   * @returns {number} Total snowfall in cm over next 72 hours
+   */
+  calculateNext72HourSnowfall(hourlyData) {
+    return this.calculateSnowfallForHours(hourlyData, 72);
+  }
+
+  /**
+   * Get 6-hourly snowfall data for the next 72 hours (12 data points)
+   * @param {Object} hourlyData - Hourly forecast data
+   * @returns {Array} Array of { time, snowfall } objects for each 6-hour block
+   */
+  get6HourlySnowfall(hourlyData) {
+    if (!hourlyData || !hourlyData.time || !hourlyData.snowfall) {
+      return [];
+    }
+
+    const now = new Date();
+    const result = [];
+    let currentBlockSnowfall = 0;
+    let hoursInBlock = 0;
+    let blockStartTime = null;
+    let totalHours = 0;
+
+    for (let i = 0; i < hourlyData.time.length && totalHours < 72; i++) {
+      const forecastTime = new Date(hourlyData.time[i]);
+
+      if (forecastTime >= now) {
+        if (blockStartTime === null) {
+          blockStartTime = forecastTime.toISOString();
+        }
+
+        currentBlockSnowfall += hourlyData.snowfall[i] || 0;
+        hoursInBlock++;
+        totalHours++;
+
+        // Complete a 6-hour block
+        if (hoursInBlock === 6) {
+          result.push({
+            time: blockStartTime,
+            snowfall: Math.round(currentBlockSnowfall * 10) / 10
+          });
+          currentBlockSnowfall = 0;
+          hoursInBlock = 0;
+          blockStartTime = null;
+        }
+      }
+    }
+
+    // Add any remaining partial block
+    if (hoursInBlock > 0) {
+      result.push({
+        time: blockStartTime,
+        snowfall: Math.round(currentBlockSnowfall * 10) / 10
+      });
+    }
+
+    return result;
+  }
+
+  /**
    * Get forecast data (uses same caching as current weather)
    * @returns {Promise<Object>} Forecast data
    */
@@ -329,7 +410,13 @@ class WeatherService {
     const forecast = weather.levels.map(level => ({
       location: level.location,
       elevation: level.elevation,
+      // Rolling snowfall totals from NOW (hourly-based)
       next_24h_snowfall: this.calculateNext24HourSnowfall(level.hourly),
+      next_48h_snowfall: this.calculateNext48HourSnowfall(level.hourly),
+      next_72h_snowfall: this.calculateNext72HourSnowfall(level.hourly),
+      // 6-hourly breakdown for line graph (12 data points over 72h)
+      snowfall_6hourly: this.get6HourlySnowfall(level.hourly),
+      // Calendar day forecasts (midnight-to-midnight)
       daily_forecast: level.daily.time.map((date, index) => ({
         date,
         temp_max: level.daily.temperature_2m_max[index],
