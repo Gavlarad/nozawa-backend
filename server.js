@@ -587,6 +587,13 @@ app.post('/api/groups/:code/checkin', apiLimiter, validateCheckin, checkValidati
       ]
     );
     
+    // Update group_members.last_seen_at (dual-write)
+    await pool.query(
+      `UPDATE group_members SET last_seen_at = NOW(), user_name = COALESCE($3, user_name)
+       WHERE group_code = $1 AND device_id = $2`,
+      [code, deviceId, userName]
+    );
+
     // Log different message for meetups vs regular check-ins
     if (scheduledTime) {
       const timeStr = new Date(scheduledTime).toLocaleString('en-US', { timeZone: 'Asia/Tokyo', dateStyle: 'short', timeStyle: 'short' });
@@ -678,7 +685,33 @@ app.put('/api/groups/:code/members/:deviceId/accommodation', async (req, res) =>
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    // Get the user's MOST RECENT active check-in
+    const shouldShare = share === true;
+
+    // Prepare accommodation coords for PostgreSQL array format
+    let coordsArray = null;
+    if (accommodationCoords && Array.isArray(accommodationCoords) && accommodationCoords.length === 2) {
+      coordsArray = accommodationCoords;
+    }
+
+    // PRIMARY: Update group_members table (source of truth)
+    const memberResult = await pool.query(
+      `UPDATE group_members
+       SET accommodation_place_id = $1,
+           accommodation_name = $2,
+           accommodation_coords = $3,
+           display_accommodation_to_group = $4,
+           last_seen_at = NOW()
+       WHERE group_code = $5 AND device_id = $6
+       RETURNING *`,
+      [accommodationPlaceId, accommodationName, coordsArray, shouldShare, code, deviceId]
+    );
+
+    if (memberResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Not a member of this group' });
+    }
+
+    // SECONDARY: Also update the most recent active check-in if exists (for backward compatibility)
+    const accommodationCoordsStr = accommodationCoords ? JSON.stringify(accommodationCoords) : null;
     const currentCheckIn = await pool.query(
       `SELECT id FROM checkin_new
        WHERE group_code = $1
@@ -689,47 +722,20 @@ app.put('/api/groups/:code/members/:deviceId/accommodation', async (req, res) =>
       [code, deviceId]
     );
 
-    if (currentCheckIn.rows.length === 0) {
-      return res.status(404).json({ error: 'No active check-in found' });
+    if (currentCheckIn.rows.length > 0) {
+      await pool.query(
+        `UPDATE checkin_new
+         SET accommodation_place_id = $1,
+             accommodation_coords = $2,
+             accommodation_name = $3,
+             display_accommodation_to_group = $4
+         WHERE id = $5`,
+        [accommodationPlaceId, accommodationCoordsStr, accommodationName, shouldShare, currentCheckIn.rows[0].id]
+      );
     }
 
-    // ALWAYS update accommodation data regardless of share value
-    // The share flag only controls VISIBILITY, not the data itself
-    const shouldShare = share === true;
-    const accommodationCoordsStr = accommodationCoords ? JSON.stringify(accommodationCoords) : null;
-
-    // Update ONLY the most recent active check-in
-    const result = await pool.query(
-      `UPDATE checkin_new
-       SET accommodation_place_id = $1,
-           accommodation_coords = $2,
-           accommodation_name = $3,
-           display_accommodation_to_group = $4
-       WHERE id = $5
-       RETURNING *`,
-      [
-        accommodationPlaceId,
-        accommodationCoordsStr,
-        accommodationName,
-        shouldShare,
-        currentCheckIn.rows[0].id
-      ]
-    );
-
-    // Deactivate any other active check-ins for this device in this group
-    // This prevents stale data from appearing
-    await pool.query(
-      `UPDATE checkin_new
-       SET is_active = false
-       WHERE group_code = $1
-         AND device_id = $2
-         AND id != $3
-         AND is_active = true`,
-      [code, deviceId, currentCheckIn.rows[0].id]
-    );
-
     console.log(`Accommodation updated: ${deviceId} in group ${code} - ${accommodationName || 'none'} (sharing: ${shouldShare})`);
-    res.json({ success: true, updated: result.rows[0], checkInId: currentCheckIn.rows[0].id });
+    res.json({ success: true, updated: memberResult.rows[0] });
 
   } catch (error) {
     console.error('Update accommodation error:', error);
@@ -801,35 +807,78 @@ app.get('/api/groups/:code/checkins', async (req, res) => {
   }
 });
 
-// Get member list for a group
+// Join a group (explicit membership)
+app.post('/api/groups/:code/join', apiLimiter, async (req, res) => {
+  const { code } = req.params;
+  const { deviceId, userName, accommodationPlaceId, accommodationCoords, accommodationName, displayAccommodationToGroup } = req.body;
+
+  if (!deviceId) {
+    return res.status(400).json({ error: 'Device ID required' });
+  }
+
+  try {
+    // Verify group exists
+    const groupCheck = await pool.query('SELECT * FROM groups WHERE code = $1', [code]);
+    if (groupCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    // Prepare accommodation coords for PostgreSQL array format
+    let coordsArray = null;
+    if (accommodationCoords && Array.isArray(accommodationCoords) && accommodationCoords.length === 2) {
+      coordsArray = accommodationCoords;
+    }
+
+    // Upsert into group_members
+    const result = await pool.query(
+      `INSERT INTO group_members (group_code, device_id, user_name, joined_at, last_seen_at,
+        accommodation_place_id, accommodation_name, accommodation_coords, display_accommodation_to_group)
+       VALUES ($1, $2, $3, NOW(), NOW(), $4, $5, $6, $7)
+       ON CONFLICT (group_code, device_id)
+       DO UPDATE SET
+         user_name = COALESCE(EXCLUDED.user_name, group_members.user_name),
+         last_seen_at = NOW(),
+         accommodation_place_id = COALESCE(EXCLUDED.accommodation_place_id, group_members.accommodation_place_id),
+         accommodation_name = COALESCE(EXCLUDED.accommodation_name, group_members.accommodation_name),
+         accommodation_coords = COALESCE(EXCLUDED.accommodation_coords, group_members.accommodation_coords),
+         display_accommodation_to_group = COALESCE(EXCLUDED.display_accommodation_to_group, group_members.display_accommodation_to_group)
+       RETURNING *`,
+      [code, deviceId, userName, accommodationPlaceId, accommodationName, coordsArray, displayAccommodationToGroup || false]
+    );
+
+    console.log(`Group join: ${userName || deviceId} joined group ${code}`);
+    res.json({
+      success: true,
+      member: result.rows[0],
+      message: 'Successfully joined group'
+    });
+
+  } catch (error) {
+    console.error('Join group error:', error);
+    res.status(500).json({ error: 'Failed to join group' });
+  }
+});
+
+// Get member list for a group (now reads from group_members table)
 app.get('/api/groups/:code/members', async (req, res) => {
   const { code } = req.params;
 
   try {
-    // Get unique members with their latest accommodation data (last 24 hours)
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    // Get all members from group_members table (no 24-hour limit!)
     const result = await pool.query(
-      `SELECT DISTINCT ON (c1.device_id)
-       c1.device_id,
-       c1.user_name,
-       c1.checked_in_at as last_checkin,
-       COALESCE(c2.accommodation_place_id, c1.accommodation_place_id) as accommodation_place_id,
-       COALESCE(c2.accommodation_coords, c1.accommodation_coords) as accommodation_coords,
-       COALESCE(c2.accommodation_name, c1.accommodation_name) as accommodation_name,
-       COALESCE(c2.display_accommodation_to_group, c1.display_accommodation_to_group) as display_accommodation_to_group
-       FROM checkin_new c1
-       LEFT JOIN LATERAL (
-         SELECT accommodation_place_id, accommodation_coords, accommodation_name, display_accommodation_to_group
-         FROM checkin_new
-         WHERE group_code = $1
-           AND device_id = c1.device_id
-           AND accommodation_place_id IS NOT NULL
-         ORDER BY checked_in_at DESC
-         LIMIT 1
-       ) c2 ON true
-       WHERE c1.group_code = $1 AND c1.checked_in_at > $2
-       ORDER BY c1.device_id, c1.checked_in_at DESC`,
-      [code, oneDayAgo]
+      `SELECT
+        device_id,
+        user_name,
+        joined_at,
+        last_seen_at,
+        accommodation_place_id,
+        accommodation_name,
+        accommodation_coords,
+        display_accommodation_to_group
+       FROM group_members
+       WHERE group_code = $1
+       ORDER BY joined_at ASC`,
+      [code]
     );
 
     // Get currently active check-ins for each member (scheduled_for IS NULL = check-in now)
@@ -865,20 +914,17 @@ app.get('/api/groups/:code/members', async (req, res) => {
 
     // Combine member info with active status and accommodation data
     const membersWithStatus = result.rows.map(member => {
-      // Parse accommodation coords from JSON string to array
+      // accommodation_coords is already a PostgreSQL array, convert to JS array
       let accommodationCoords = null;
       if (member.accommodation_coords) {
-        try {
-          accommodationCoords = JSON.parse(member.accommodation_coords);
-        } catch (e) {
-          console.error('Failed to parse accommodation coords:', e);
-        }
+        accommodationCoords = member.accommodation_coords;
       }
 
       return {
         device_id: member.device_id,
         user_name: member.user_name,
-        last_checkin: parseInt(member.last_checkin),
+        joined_at: member.joined_at,
+        last_checkin: member.last_seen_at ? new Date(member.last_seen_at).getTime() : null,
         currently_at: activeMap[member.device_id] || null,
         is_checked_in: !!activeMap[member.device_id],
         // Accommodation fields (only include if sharing)
@@ -915,7 +961,7 @@ app.get('/api/groups/:code/members', async (req, res) => {
   }
 });
 
-// Leave a group (deletes all check-ins for this user)
+// Leave a group (removes from group_members and deletes all check-ins)
 app.delete('/api/groups/:code/leave', async (req, res) => {
   const { code } = req.params;
   const { deviceId } = req.body;
@@ -925,24 +971,30 @@ app.delete('/api/groups/:code/leave', async (req, res) => {
   }
 
   try {
+    // Delete from group_members first
+    const memberResult = await pool.query(
+      'DELETE FROM group_members WHERE group_code = $1 AND device_id = $2 RETURNING *',
+      [code, deviceId]
+    );
+
     // Delete all check-ins for this device in this group
-    const result = await pool.query(
+    const checkinResult = await pool.query(
       'DELETE FROM checkin_new WHERE group_code = $1 AND device_id = $2 RETURNING *',
       [code, deviceId]
     );
 
-    if (result.rows.length === 0) {
+    if (memberResult.rows.length === 0 && checkinResult.rows.length === 0) {
       return res.status(404).json({
-        error: 'No check-ins found',
-        message: 'User has no check-ins in this group'
+        error: 'Not a member',
+        message: 'User is not a member of this group'
       });
     }
 
-    console.log(`Leave group: Device ${deviceId} left group ${code} (${result.rows.length} check-ins deleted)`);
+    console.log(`Leave group: Device ${deviceId} left group ${code} (member removed, ${checkinResult.rows.length} check-ins deleted)`);
     res.json({
       success: true,
       message: 'Successfully left group',
-      deleted_checkins: result.rows.length
+      deleted_checkins: checkinResult.rows.length
     });
   } catch (error) {
     console.error('Leave group error:', error);
