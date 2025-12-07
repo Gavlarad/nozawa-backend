@@ -859,7 +859,7 @@ app.post('/api/groups/:code/join', apiLimiter, async (req, res) => {
   }
 });
 
-// Get member list for a group (now reads from group_members table)
+// Get member list for a group (reads from group_members + fallback to checkin_new)
 app.get('/api/groups/:code/members', async (req, res) => {
   const { code } = req.params;
 
@@ -878,6 +878,27 @@ app.get('/api/groups/:code/members', async (req, res) => {
        FROM group_members
        WHERE group_code = $1
        ORDER BY joined_at ASC`,
+      [code]
+    );
+
+    // Track device_ids already in group_members
+    const knownDeviceIds = new Set(result.rows.map(r => r.device_id));
+
+    // FALLBACK: Get members from checkin_new who aren't in group_members
+    // This supports older app versions that don't call /join
+    const fallbackResult = await pool.query(
+      `SELECT DISTINCT ON (device_id)
+        device_id,
+        user_name,
+        checked_in_at,
+        accommodation_place_id,
+        accommodation_name,
+        accommodation_coords,
+        display_accommodation_to_group
+       FROM checkin_new
+       WHERE group_code = $1
+         AND is_active = true
+       ORDER BY device_id, checked_in_at DESC`,
       [code]
     );
 
@@ -932,6 +953,38 @@ app.get('/api/groups/:code/members', async (req, res) => {
         accommodationCoords: member.display_accommodation_to_group ? accommodationCoords : null,
         accommodationName: member.display_accommodation_to_group ? member.accommodation_name : null
       };
+    });
+
+    // Add fallback members from checkin_new (those not in group_members)
+    fallbackResult.rows.forEach(checkin => {
+      if (!knownDeviceIds.has(checkin.device_id)) {
+        // Parse accommodation_coords from JSON string if present
+        let accommodationCoords = null;
+        if (checkin.accommodation_coords) {
+          try {
+            accommodationCoords = JSON.parse(checkin.accommodation_coords);
+          } catch (e) {
+            // Already an array or invalid
+            accommodationCoords = checkin.accommodation_coords;
+          }
+        }
+
+        membersWithStatus.push({
+          device_id: checkin.device_id,
+          user_name: checkin.user_name,
+          joined_at: new Date(parseInt(checkin.checked_in_at)),
+          last_checkin: parseInt(checkin.checked_in_at),
+          currently_at: activeMap[checkin.device_id] || null,
+          is_checked_in: !!activeMap[checkin.device_id],
+          // Accommodation fields (only include if sharing)
+          accommodationPlaceId: checkin.display_accommodation_to_group ? checkin.accommodation_place_id : null,
+          accommodationCoords: checkin.display_accommodation_to_group ? accommodationCoords : null,
+          accommodationName: checkin.display_accommodation_to_group ? checkin.accommodation_name : null,
+          // Flag to identify legacy members (optional, for debugging)
+          _fromCheckin: true
+        });
+        knownDeviceIds.add(checkin.device_id);
+      }
     });
 
     // Format meetups for frontend

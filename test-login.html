@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+</head>
+<body>
+    <h1>Test Admin Login</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testLogin() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = 'Testing...';
+
+            try {
+                const response = await fetch('https://nozawa-backend-production.up.railway.app/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@nozawa.com',
+                        password: 'NozawaAdmin2024!'
+                    })
+                });
+
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = text;
+                }
+
+                resultEl.textContent = JSON.stringify({
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    body: data
+                }, null, 2);
+            } catch (error) {
+                resultEl.textContent = 'Error: ' + error.message + '\n\n' + error.stack;
+            }
+        }
+    </script>
+</body>
+</html>
