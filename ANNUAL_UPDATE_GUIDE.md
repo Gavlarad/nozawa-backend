@@ -43,16 +43,20 @@ Run this process annually (typically September before ski season) to:
 ## Quick Reference (TL;DR)
 
 ```bash
+# 1. Refresh Google data (database)
 cd nozawa-backend/scripts
+node refreshGoogleDataPostgres.js --dry-run --include-new  # Preview
+node refreshGoogleDataPostgres.js                           # Run live
 
-# 1. Preview changes (no database modifications)
-node refreshGoogleDataPostgres.js --dry-run --include-new
+# 2. Download photos for offline bundle
+node downloadPhotosForBundle.js --dry-run                   # Preview
+node downloadPhotosForBundle.js                             # Download
 
-# 2. Run actual update
-node refreshGoogleDataPostgres.js
+# 3. Regenerate photo map (in app directory)
+cd ../../nozawa-test/scripts
+node generatePhotoMap.js                                    # Rebuild map
 
-# 3. Add any new places found (optional)
-node addNewPlaceFromGoogle.js <google_place_id>
+# 4. Commit and push app update
 ```
 
 ---
@@ -129,18 +133,96 @@ cat scripts/google_refresh_report_*.json | grep -A10 "potentiallyClosed"
 
 ---
 
-### Step 5: Verify in Admin Panel
+### Step 5: Download Photos for Offline Bundle
 
-1. Open admin.html
-2. Click "Load from Server"
-3. Spot check several restaurants:
-   - Verify ratings updated
-   - Check opening hours look current
-   - Confirm photos are showing
+Download Google photos (and any manual photos) into the app's assets folder:
+
+```bash
+cd nozawa-backend/scripts
+
+# Preview what will be downloaded
+node downloadPhotosForBundle.js --dry-run
+
+# Download photos (first 4 per restaurant)
+node downloadPhotosForBundle.js
+```
+
+**What happens:**
+- Checks each restaurant for photo sources
+- If `manual_photos = true`: downloads only manual photo URLs
+- If has `photo_urls` in overrides: downloads manual first, fills with Google
+- Otherwise: downloads first 4 Google photos
+- Skips places that already have bundled photos
+- Saves to `nozawa-test/assets/photos/<place_name>/`
+
+**Options:**
+```bash
+--dry-run                    # Preview only, no downloads
+--output /path/to/photos     # Custom output directory
+--place-id ChIJxxxxx         # Download for single place only
+--clean                      # Remove folders for deleted places
+```
+
+---
+
+### Step 6: Regenerate Photo Map
+
+After downloading photos, regenerate the mapping file:
+
+```bash
+cd nozawa-test/scripts
+node generatePhotoMap.js
+```
+
+**What happens:**
+- Scans `assets/photos/` directory
+- Matches folders to place IDs from PostgreSQL
+- Generates `utils/photoMap.js` with `require()` statements
+- Reports any unmapped folders (need manual cleanup)
+
+---
+
+### Step 7: Verify and Push App Update
+
+1. Open admin.html and spot check restaurants
+2. Test the app locally to verify photos load
+3. Commit changes:
+   ```bash
+   cd nozawa-test
+   git add assets/photos utils/photoMap.js
+   git commit -m "Annual photo refresh"
+   git push
+   ```
+4. Build and submit app update
 
 ---
 
 ## Photo Management
+
+### Adding Manual Photos (Staging for Bundle)
+
+To add your own photos that will be bundled for offline use:
+
+**1. Upload photo to a hosting service:**
+- [Imgur](https://imgur.com) - free, no account needed
+- [Cloudinary](https://cloudinary.com) - free tier, good for images
+- Any URL that returns a direct image
+
+**2. Add URL to admin panel:**
+1. Open admin.html
+2. Find the restaurant
+3. In the Photos section, add the image URL to `photo_urls`
+4. Save changes
+
+**3. Photos are staged until next bundle:**
+- The URL is stored in `place_overrides.photo_urls`
+- Your manual photos will appear FIRST in the app (before Google photos)
+- On next annual refresh, `downloadPhotosForBundle.js` will download these URLs
+- They get bundled into the app for offline use
+
+**Note:** Until the next app update, manual photos display via URL (requires internet). After bundling, they work offline.
+
+---
 
 ### How Photos Work
 
@@ -316,6 +398,42 @@ Creates entries in:
 
 You then add local knowledge via admin panel.
 
+### downloadPhotosForBundle.js
+
+Download photos from Google (and manual URLs) into app's assets folder for offline use.
+
+```bash
+# Preview what will be downloaded
+node downloadPhotosForBundle.js --dry-run
+
+# Download all photos
+node downloadPhotosForBundle.js
+
+# Download for a single place
+node downloadPhotosForBundle.js --place-id ChIJxxxxx
+
+# Clean up orphaned folders
+node downloadPhotosForBundle.js --clean
+```
+
+Respects `manual_photos` flag:
+- `true`: Only downloads from `photo_urls` (protected)
+- `false` + has `photo_urls`: Manual first, then fill with Google
+- No manual photos: Downloads first 4 Google photos
+
+### generatePhotoMap.js (in nozawa-test/scripts)
+
+Regenerate the photo mapping file after downloading new photos.
+
+```bash
+cd nozawa-test/scripts
+node generatePhotoMap.js
+```
+
+- Scans `assets/photos/` directory
+- Queries PostgreSQL for place IDs
+- Generates `utils/photoMap.js`
+
 ---
 
 ## Troubleshooting
@@ -359,13 +477,23 @@ The script shows estimated cost at the end. If too high:
 ```
 nozawa-backend/
 ├── scripts/
-│   ├── refreshGoogleDataPostgres.js    # Main refresh script
+│   ├── refreshGoogleDataPostgres.js    # Refresh Google data in DB
+│   ├── downloadPhotosForBundle.js      # Download photos for offline
 │   ├── addNewPlaceFromGoogle.js        # Add new places
 │   └── google_refresh_report_*.json    # Generated reports
 ├── migrations/
 │   └── 018_update_photo_merge_logic.sql  # Photo merge view
 ├── admin.html                           # Admin interface
 └── .env                                 # API keys (GOOGLE_PLACES_API_KEY)
+
+nozawa-test/
+├── scripts/
+│   └── generatePhotoMap.js             # Regenerate photo mapping
+├── assets/photos/                       # Bundled photos (offline)
+│   ├── <restaurant_name>/              # Folder per place
+│   └── nozawa_<onsen>/                 # Onsen folders
+└── utils/
+    └── photoMap.js                      # Auto-generated photo mapping
 ```
 
 ---
