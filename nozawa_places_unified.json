@@ -13838,8 +13838,8 @@
       "name": "Nagasaka Gondola",
       "category": "lift",
       "coordinates": [
-        138.449797,
-        36.9200588
+        138.4523722203726,
+        36.92007129585832
       ],
       "hours": {
         "open": "08:30",
@@ -13874,8 +13874,8 @@
       "status": "active",
       "address": null,
       "location": {
-        "lng": 138.449797,
-        "lat": 36.9200588,
+        "lng": 138.4523722203726,
+        "lat": 36.92007129585832,
         "address": null
       },
       "last_verified": "2025-11-06T08:14:09.140Z",
@@ -13886,8 +13886,8 @@
       "name": "Hikage Gondola",
       "category": "lift",
       "coordinates": [
-        138.4522826,
-        36.925767
+        138.453303819734,
+        36.92577674323889
       ],
       "hours": {
         "open": "08:30",
@@ -13948,8 +13948,8 @@
       "name": "Yu Road (Moving Walkway)",
       "category": "lift",
       "coordinates": [
-        138.4488096,
-        36.9242001
+        138.44889916260203,
+        36.924352341394304
       ],
       "hours": {
         "open": "07:00",
