@@ -1151,21 +1151,24 @@ app.post('/api/admin/reload-data', adminLimiter, authenticateAdmin, async (req, 
 });
 
 // Get current places data for admin editing (JWT protected + rate limited)
-app.get('/api/admin/places-data', adminLimiter, authenticateAdmin, (req, res) => {
+// Now reads directly from PostgreSQL - no more JSON file dependency
+app.get('/api/admin/places-data', adminLimiter, authenticateAdmin, async (req, res) => {
   try {
-    const dataPath = path.join(__dirname, 'nozawa_places_unified.json');
-    const rawData = fs.readFileSync(dataPath, 'utf8');
-    const data = JSON.parse(rawData);
+    const { exportPlacesToJSON } = require('./services/postgres-write');
+
+    console.log(`Loading places data from PostgreSQL for admin: ${req.admin.email}`);
+
+    const data = await exportPlacesToJSON();
 
     res.json({
       success: true,
       data: data,
-      loaded_from: 'server',
+      loaded_from: 'postgresql',
       timestamp: new Date().toISOString(),
       admin: req.admin.email
     });
   } catch (error) {
-    console.error('Error loading places data:', error);
+    console.error('Error loading places data from PostgreSQL:', error);
     res.status(500).json({
       error: 'Failed to load places data',
       message: error.message

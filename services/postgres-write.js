@@ -290,6 +290,7 @@ async function exportPlacesToJSON() {
           ELSE gd.photos
         END as photos,
         po.manual_photos,
+        po.photo_urls as manual_photo_urls,
         po.cuisine,
         po.budget_range,
         po.english_menu,
@@ -303,7 +304,19 @@ async function exportPlacesToJSON() {
         lk.features_verified,
         p.last_verified,
         p.created_at,
-        p.updated_at
+        p.updated_at,
+        -- Google data fields for admin panel
+        gd.google_rating,
+        gd.google_review_count as google_reviews,
+        gd.google_price_range,
+        gd.google_phone,
+        gd.google_website,
+        gd.opening_hours as google_hours,
+        gd.photos as google_photos,
+        gd.google_types,
+        gd.editorial_summary,
+        gd.features as google_features,
+        gd.synced_at as google_synced_at
       FROM places p
       LEFT JOIN place_google_data gd ON p.id = gd.place_id
       LEFT JOIN place_overrides po ON p.id = po.place_id
@@ -355,6 +368,23 @@ async function exportPlacesToJSON() {
         if (row.description) place.local_knowledge.description = row.description;
         if (row.notes) place.local_knowledge.notes = row.notes;
         if (row.features_verified) place.local_knowledge.verified_features = row.features_verified;
+      }
+
+      // Google data (for admin panel - shows raw Google data separately)
+      if (row.google_rating || row.google_photos || row.google_hours) {
+        place.google_data = {
+          rating: row.google_rating,
+          review_count: row.google_reviews,
+          price_range: row.google_price_range,
+          phone: row.google_phone,
+          website: row.google_website,
+          opening_hours: row.google_hours,
+          photos: row.google_photos,
+          types: row.google_types,
+          editorial_summary: row.editorial_summary,
+          features: row.google_features,
+          synced_at: row.google_synced_at
+        };
       }
 
       return place;
