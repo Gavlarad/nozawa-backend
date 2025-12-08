@@ -1710,9 +1710,19 @@
 
                     <!-- Onsen Photos -->
                     <div class="form-section">
-                        <h3 class="form-section-title">Photos</h3>
+                        <h3 class="form-section-title">📸 Photos</h3>
                         <div class="photo-list" id="photoList"></div>
                         <button class="btn btn-primary btn-small" onclick="addPhotoField()">Add Photo URL</button>
+
+                        <!-- Bundled App Photos (read-only) -->
+                        <div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #dee2e6;">
+                            <label class="form-label">📱 Bundled App Photos (read-only)</label>
+                            <p style="font-size: 12px; color: #6c757d; margin-bottom: 10px;">
+                                These photos are bundled with the app and cannot be changed from here.
+                                To update, modify the app's assets/photos folder and rebuild.
+                            </p>
+                            <div id="bundledPhotosList" class="google-photos-grid"></div>
+                        </div>
                     </div>
                 ` : ''}
 
@@ -1822,6 +1832,7 @@
             }
             if (isOnsen) {
                 renderPhotos();
+                renderBundledPhotos();
             }
             if (isLift) {
                 renderFeatures();
@@ -1852,6 +1863,110 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        // Bundled onsen photos mapping (from app's photoMap.js)
+        // These photos are bundled with the mobile app, not hosted externally
+        const BUNDLED_ONSEN_PHOTOS = {
+            'nozawa_oyu': [
+                'oyu_big_bath_1.jpeg',
+                'oyu_big_bath_2.jpeg',
+                'oyu_big_bath_3.jpeg'
+            ],
+            'nozawa_kawaharayu': [
+                'kawaharayu_1.jpg',
+                'kawaharayu_2.jpg',
+                'kawaharayu_3.jpg'
+            ],
+            'nozawa_kumanotearayu': [
+                'kumanotearayu_bear_s_paw_bath_1.jpg',
+                'kumanotearayu_bear_s_paw_bath_2.jpg',
+                'kumanotearayu_bear_s_paw_bath_3.jpg'
+            ],
+            'nozawa_akihanoyu': [
+                'akiha_no_yu_1.jpeg',
+                'akiha_no_yu_2.jpeg'
+            ],
+            'nozawa_juodonoyu': [
+                'juodo_no_yu_1.jpeg',
+                'juodo_no_yu_2.jpeg',
+                'juodo_no_yu_3.jpeg'
+            ],
+            'nozawa_matsubanoyu': [
+                'matsuba_no_yu_1.jpg',
+                'matsuba_no_yu_2.jpg',
+                'matsuba_no_yu_3.jpg'
+            ],
+            'nozawa_nakanoyu': [
+                'nakao_no_yu_1.jpg',
+                'nakao_no_yu_2.jpg',
+                'nakao_no_yu_3.jpg'
+            ],
+            'nozawa_shinyu': [
+                'shin_yu_new_bath_1.jpg',
+                'shin_yu_new_bath_2.jpg',
+                'shin_yu_new_bath_3.jpg'
+            ],
+            'nozawa_kaminoyu': [
+                'kami_no_yu_upper_temple_bath_1.jpg',
+                'kami_no_yu_upper_temple_bath_2jpg.jpg',
+                'kami_no_yu_upper_temple_bath_3.jpg'
+            ],
+            'nozawa_asagama': [
+                'nozawa_asagama_1.jpeg',
+                'nozawa_asagama_2.jpeg',
+                'nozawa_asagama_3.jpeg'
+            ],
+            'nozawa_yokochinoyu': [
+                'nozawa_yokochinoyu_1.jpg',
+                'nozawa_yokochinoyu_2.jpg',
+                'nozawa_yokochinoyu_3.jpg'
+            ],
+            'nozawa_takinoyu': [
+                'nozawa_takinoyu_1.jpg',
+                'nozawa_takinoyu_2.jpg',
+                'nozawa_takinoyu_3.jpg'
+            ],
+            'nozawa_ogama': [
+                'nozawa_ogama_1.jpg',
+                'nozawa_ogama_2.jpg',
+                'nozawa_ogama_3.jpg'
+            ],
+            'nozawa_shindennoyu': [
+                'nozawa_shindennoyu_1.jpg',
+                'nozawa_shindennoyu_2.jpg',
+                'nozawa_shindennoyu_3.jpg'
+            ]
+        };
+
+        function renderBundledPhotos() {
+            const container = document.getElementById('bundledPhotosList');
+            if (!container) return;
+
+            const placeId = currentPlace.id;
+            const photos = BUNDLED_ONSEN_PHOTOS[placeId];
+
+            if (!photos || photos.length === 0) {
+                container.innerHTML = '<p style="color: #6c757d; font-size: 13px;">No bundled photos for this onsen</p>';
+                return;
+            }
+
+            // Display photo file names as reference (can't show actual images since they're bundled in app)
+            container.innerHTML = photos.map((filename, index) => `
+                <div class="google-photo-item" style="background: #f8f9fa; display: flex; align-items: center; justify-content: center; cursor: default;">
+                    <div style="text-align: center; padding: 10px;">
+                        <div style="font-size: 24px; margin-bottom: 5px;">📸</div>
+                        <div style="font-size: 10px; color: #495057; word-break: break-all;">${filename}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Add summary
+            container.insertAdjacentHTML('beforeend', `
+                <div style="grid-column: 1 / -1; margin-top: 10px; padding: 10px; background: #e8f4fd; border-radius: 6px; font-size: 12px;">
+                    <strong>${photos.length} photos bundled</strong> in app at: <code>assets/photos/${placeId}/</code>
+                </div>
+            `);
         }
 
         function toggleVisibility() {
