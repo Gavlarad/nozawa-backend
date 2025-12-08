@@ -1973,14 +1973,18 @@
             const container = document.getElementById('photoList');
             if (!container) return;
 
-            container.innerHTML = photos.map((photo, index) => `
-                <div class="photo-item">
-                    <img src="${photo}" class="photo-thumbnail" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23ddd%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-family=%22sans-serif%22 font-size=%2212%22>No image</text></svg>'">
-                    <input type="text" class="form-control" value="${photo}"
-                        onchange="updatePhoto(${index}, this.value)" placeholder="Photo URL">
-                    <button class="btn btn-danger btn-small" onclick="removePhoto(${index})">Remove</button>
-                </div>
-            `).join('');
+            container.innerHTML = photos.map((photo, index) => {
+                // Handle both string URLs and object format {url: "...", width: ..., height: ...}
+                const photoUrl = typeof photo === 'string' ? photo : (photo?.url || '');
+                return `
+                    <div class="photo-item">
+                        <img src="${photoUrl}" class="photo-thumbnail" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%23ddd%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-family=%22sans-serif%22 font-size=%2212%22>No image</text></svg>'">
+                        <input type="text" class="form-control" value="${photoUrl}"
+                            onchange="updatePhoto(${index}, this.value)" placeholder="Photo URL">
+                        <button class="btn btn-danger btn-small" onclick="removePhoto(${index})">Remove</button>
+                    </div>
+                `;
+            }).join('');
         }
 
         function addPhotoField() {
