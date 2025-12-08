@@ -1,0 +1,83 @@
+{
+  "timestamp": "2025-12-08T01:25:57.988Z",
+  "mode": "live",
+  "stats": {
+    "existing": 79,
+    "updated": 77,
+    "skipped": 2,
+    "errors": 0,
+    "newFound": 10,
+    "closedFound": 2,
+    "apiCalls": 85
+  },
+  "newPlaces": [
+    {
+      "google_place_id": "ChIJ0b-e1TEF9l8RXf-3inK5Shc",
+      "name": "Atarashiya",
+      "rating": 4.4,
+      "review_count": 470
+    },
+    {
+      "google_place_id": "ChIJhV30WtQa9l8RNmhZ5Z8p4xs",
+      "name": "肉のわしの・焼肉のわしの",
+      "rating": 4.5,
+      "review_count": 31
+    },
+    {
+      "google_place_id": "ChIJLZyR5O0F9l8RJFBPafwnpjY",
+      "name": "Standing Bar Okawari"
+    },
+    {
+      "google_place_id": "ChIJGdC0d3wF9l8RE5SZAeHhTl4",
+      "name": "Jaffle Heaven"
+    },
+    {
+      "google_place_id": "ChIJ-81313AF9l8RXshyBsRPNkA",
+      "name": "Pots Bar & Kitchen",
+      "rating": 4.4,
+      "review_count": 29
+    },
+    {
+      "google_place_id": "ChIJ809FSy4F9l8RSe2C4xBJkQM",
+      "name": "松泉堂",
+      "rating": 4.3,
+      "review_count": 59
+    },
+    {
+      "google_place_id": "ChIJEZzcsC4F9l8R5ZxvHd7uYZs",
+      "name": "JUGEM",
+      "rating": 4.2,
+      "review_count": 46
+    },
+    {
+      "google_place_id": "ChIJrW2ppS8F9l8RXNnNfzHRIKM",
+      "name": "78 Cafe - Nappa Cafe",
+      "rating": 4.6,
+      "review_count": 169
+    },
+    {
+      "google_place_id": "ChIJKxckPgUF9l8RrwUIMvrayl8",
+      "name": "Compass Village",
+      "rating": 4.7,
+      "review_count": 20
+    },
+    {
+      "google_place_id": "ChIJGbGuJywF9l8Re4tFPaQYOg0",
+      "name": "Cafe Bell",
+      "rating": 4.2,
+      "review_count": 24
+    }
+  ],
+  "potentiallyClosed": [
+    {
+      "id": 94,
+      "name": "Dori Dori 庵 タイ料理_Thailand Cuisine",
+      "google_place_id": "ChIJo3KAMAAF9l8RlFQuS4B_WRA"
+    },
+    {
+      "id": 112,
+      "name": "うんまい屋 -UNMAIYA-",
+      "google_place_id": "ChIJj9B3bwAF9l8Rleure4xQUYk"
+    }
+  ]
+}

@@ -339,6 +339,54 @@
             font-weight: 600;
         }
 
+        .badge-has-tips {
+            background: #28a745;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .google-hint {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .google-hint::before {
+            content: "📍 Google: ";
+            font-style: normal;
+        }
+
+        .override-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #f39c12;
+            border-radius: 50%;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .override-indicator::after {
+            content: " (overridden)";
+            font-size: 10px;
+            color: #f39c12;
+            font-weight: normal;
+        }
+
+        .tip-tag {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .warning-tag {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         .place-meta {
             font-size: 12px;
             color: #6c757d;
@@ -1196,8 +1244,18 @@
             listEl.innerHTML = places.map(place => {
                 const name = place.google_data?.name || place.name || 'Unnamed';
                 const isHidden = place.visible_in_app === false;
-                const hasManualPhotos = place.manual_photos === true;
-                const hasManualOverrides = place.manual_overrides && Object.keys(place.manual_overrides).length > 0;
+                const hasManualPhotos = place.manual_photos === true || (place.photos && place.photos.length > 0);
+                const hasLocalKnowledge = place.local_knowledge && (
+                    (place.local_knowledge.tips && place.local_knowledge.tips.length > 0) ||
+                    (place.local_knowledge.warnings && place.local_knowledge.warnings.length > 0) ||
+                    place.local_knowledge.navigation_tips ||
+                    place.local_knowledge.notes
+                );
+                const hasEnhancedData = place.enhanced_data && (
+                    place.enhanced_data.cuisine ||
+                    place.enhanced_data.english_menu !== null ||
+                    place.enhanced_data.credit_cards !== null
+                );
 
                 return `
                     <div class="place-item ${currentPlace?.id === place.id ? 'selected' : ''} ${isHidden ? 'hidden' : ''}" onclick="selectPlace('${place.id}')">
@@ -1206,8 +1264,9 @@
                             <div class="place-badges">
                                 <span class="place-category category-${place.category}">${place.category}</span>
                                 ${isHidden ? '<span class="badge-hidden">👁️ Hidden</span>' : ''}
-                                ${hasManualPhotos ? '<span class="badge-manual-photos">📸 Manual</span>' : ''}
-                                ${hasManualOverrides ? '<span class="badge-protected">🔒 Protected</span>' : ''}
+                                ${hasManualPhotos ? '<span class="badge-manual-photos">📸 Photos</span>' : ''}
+                                ${hasLocalKnowledge ? '<span class="badge-has-tips">💡 Local</span>' : ''}
+                                ${hasEnhancedData ? '<span class="badge-protected">✏️ Enhanced</span>' : ''}
                             </div>
                         </div>
                         <div class="place-meta">
@@ -1389,15 +1448,54 @@
                 </div>
 
                 ${isRestaurant ? `
-                    <!-- Restaurant Enhanced Data -->
+                    <!-- Google Data Summary (Read-only reference) -->
+                    ${currentPlace.google_data ? `
+                    <div class="form-section" style="background: #e8f4fd; border: 2px solid #bee5eb;">
+                        <h3 class="form-section-title">📍 Google Data (Auto-refreshed annually)</h3>
+                        <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                            This data comes from Google and is refreshed during annual updates. Your manual edits below will override these values.
+                        </p>
+                        <div class="form-row-3">
+                            <div class="form-group">
+                                <label class="form-label">Google Rating</label>
+                                <input type="text" class="form-control" value="${currentPlace.google_data?.rating || 'N/A'} ⭐ (${currentPlace.google_data?.review_count || 0} reviews)" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Google Price</label>
+                                <input type="text" class="form-control" value="${currentPlace.google_data?.price_range || 'N/A'}" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Google Phone</label>
+                                <input type="text" class="form-control" value="${currentPlace.google_data?.phone || 'N/A'}" disabled>
+                            </div>
+                        </div>
+                        ${currentPlace.enhanced_data?.review_analysis ? `
+                        <div class="form-group">
+                            <label class="form-label">Review Insights (auto-detected from reviews)</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                ${currentPlace.enhanced_data.review_analysis.insights?.mentions_english ? '<span class="tag tip-tag">🇬🇧 English Mentioned</span>' : ''}
+                                ${currentPlace.enhanced_data.review_analysis.insights?.mentions_cash_only ? '<span class="tag warning-tag">💵 Cash Only Mentioned</span>' : ''}
+                                ${currentPlace.enhanced_data.review_analysis.insights?.mentions_wait ? '<span class="tag warning-tag">⏳ Wait Times Mentioned</span>' : ''}
+                                ${currentPlace.enhanced_data.review_analysis.insights?.mentions_vegetarian ? '<span class="tag tip-tag">🥗 Vegetarian Mentioned</span>' : ''}
+                                ${!currentPlace.enhanced_data.review_analysis.insights?.mentions_english &&
+                                  !currentPlace.enhanced_data.review_analysis.insights?.mentions_cash_only &&
+                                  !currentPlace.enhanced_data.review_analysis.insights?.mentions_wait &&
+                                  !currentPlace.enhanced_data.review_analysis.insights?.mentions_vegetarian ? '<span style="color: #6c757d;">No special insights detected</span>' : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    <!-- Restaurant Enhanced Data (Your Overrides) -->
                     <div class="form-section">
-                        <h3 class="form-section-title">Restaurant Details</h3>
+                        <h3 class="form-section-title">✏️ Your Restaurant Details (Preserved on refresh)</h3>
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">Cuisine Type</label>
                                 <input type="text" class="form-control" id="cuisine"
                                     value="${currentPlace.enhanced_data?.cuisine || ''}"
-                                    placeholder="e.g., Japanese, Italian">
+                                    placeholder="e.g., Japanese, Italian, Izakaya">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Budget Range</label>
@@ -1408,50 +1506,79 @@
                         </div>
                         <div class="form-row-3">
                             <div class="form-group">
-                                <label class="form-label">English Menu</label>
+                                <label class="form-label">English Menu${currentPlace.enhanced_data?.review_analysis?.insights?.mentions_english ? ' <span class="override-indicator"></span>' : ''}</label>
                                 <select class="form-control" id="english_menu">
                                     <option value="unknown">Unknown</option>
                                     <option value="true" ${currentPlace.enhanced_data?.english_menu === true ? 'selected' : ''}>Yes</option>
                                     <option value="false" ${currentPlace.enhanced_data?.english_menu === false ? 'selected' : ''}>No</option>
                                 </select>
+                                ${currentPlace.enhanced_data?.review_analysis?.insights?.mentions_english ? '<div class="google-hint">Reviews mention English</div>' : ''}
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Credit Cards</label>
+                                <label class="form-label">Credit Cards${currentPlace.enhanced_data?.review_analysis?.insights?.mentions_cash_only ? ' <span class="override-indicator"></span>' : ''}</label>
                                 <select class="form-control" id="credit_cards">
                                     <option value="unknown">Unknown</option>
                                     <option value="true" ${currentPlace.enhanced_data?.credit_cards === true ? 'selected' : ''}>Yes</option>
                                     <option value="false" ${currentPlace.enhanced_data?.credit_cards === false ? 'selected' : ''}>No</option>
                                 </select>
+                                ${currentPlace.enhanced_data?.review_analysis?.insights?.mentions_cash_only ? '<div class="google-hint">Reviews mention cash only</div>' : ''}
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Vegetarian Options</label>
+                                <label class="form-label">Vegetarian Options${currentPlace.enhanced_data?.review_analysis?.insights?.mentions_vegetarian ? ' <span class="override-indicator"></span>' : ''}</label>
                                 <select class="form-control" id="vegetarian_friendly">
                                     <option value="unknown">Unknown</option>
                                     <option value="true" ${currentPlace.enhanced_data?.vegetarian_friendly === true ? 'selected' : ''}>Yes</option>
                                     <option value="false" ${currentPlace.enhanced_data?.vegetarian_friendly === false ? 'selected' : ''}>No</option>
                                 </select>
+                                ${currentPlace.enhanced_data?.review_analysis?.insights?.mentions_vegetarian ? '<div class="google-hint">Reviews mention vegetarian</div>' : ''}
                             </div>
                         </div>
                     </div>
 
+                    <!-- Restaurant Photos -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">📸 Manual Photos (Appear before Google photos)</h3>
+                        <div class="checkbox-item" style="margin-bottom: 15px; background: #fff3cd;">
+                            <input type="checkbox" id="manual_photos" ${currentPlace.manual_photos ? 'checked' : ''}>
+                            <label for="manual_photos">🔒 Protect Photos (Use ONLY manual photos, hide Google photos)</label>
+                        </div>
+                        <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                            Add photo URLs below. These will appear FIRST in the app, before any Google photos.
+                            Check "Protect Photos" to hide Google photos entirely.
+                        </p>
+                        <div class="photo-list" id="photoList"></div>
+                        <button class="btn btn-primary btn-small" onclick="addPhotoField()" style="margin-top: 10px;">+ Add Photo URL</button>
+                        ${currentPlace.google_data?.photos?.length > 0 ? `
+                        <p style="font-size: 12px; color: #6c757d; margin-top: 15px;">
+                            📍 Google has ${currentPlace.google_data.photos.length} photos that will appear after your manual photos (unless protected).
+                        </p>
+                        ` : ''}
+                    </div>
+
                     <!-- Restaurant Local Knowledge -->
                     <div class="form-section">
-                        <h3 class="form-section-title">Local Knowledge</h3>
+                        <h3 class="form-section-title">💡 Local Knowledge (Preserved on refresh)</h3>
                         <div class="form-group">
                             <label class="form-label">Navigation Tips</label>
                             <textarea class="form-control" id="navigation_tips"
-                                placeholder="e.g., Turn left at the 7-Eleven, blue door">${currentPlace.local_knowledge?.navigation_tips || ''}</textarea>
+                                placeholder="e.g., Turn left at the 7-Eleven, look for the blue door">${currentPlace.local_knowledge?.navigation_tips || ''}</textarea>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Warnings</label>
+                            <label class="form-label">👍 Tips (Recommendations)</label>
+                            <div id="tipsList"></div>
+                            <input type="text" class="form-control" id="tipInput"
+                                placeholder="Add tip - e.g., Try the gyoza! (press Enter)" onkeypress="addTip(event)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">⚠️ Warnings</label>
                             <div id="warningsList"></div>
                             <input type="text" class="form-control" id="warningInput"
-                                placeholder="Add warning (press Enter)" onkeypress="addWarning(event)">
+                                placeholder="Add warning - e.g., Cash only (press Enter)" onkeypress="addWarning(event)">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Notes</label>
+                            <label class="form-label">Notes (Internal)</label>
                             <textarea class="form-control" id="notes"
-                                placeholder="e.g., Owner speaks English, try the gyoza">${currentPlace.local_knowledge?.notes || ''}</textarea>
+                                placeholder="e.g., Owner speaks English, closed Wednesdays">${currentPlace.local_knowledge?.notes || ''}</textarea>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Verified Features</label>
@@ -1466,11 +1593,19 @@
                                 </div>
                                 <div class="checkbox-item">
                                     <input type="checkbox" id="vf_smoking" ${currentPlace.local_knowledge?.verified_features?.smoking ? 'checked' : ''}>
-                                    <label for="vf_smoking">Smoking</label>
+                                    <label for="vf_smoking">Smoking Area</label>
                                 </div>
                                 <div class="checkbox-item">
                                     <input type="checkbox" id="vf_reservation" ${currentPlace.local_knowledge?.verified_features?.reservation ? 'checked' : ''}>
-                                    <label for="vf_reservation">Reservations</label>
+                                    <label for="vf_reservation">Takes Reservations</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="vf_english_staff" ${currentPlace.local_knowledge?.verified_features?.english_staff ? 'checked' : ''}>
+                                    <label for="vf_english_staff">English-Speaking Staff</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="vf_kid_friendly" ${currentPlace.local_knowledge?.verified_features?.kid_friendly ? 'checked' : ''}>
+                                    <label for="vf_kid_friendly">Kid Friendly</label>
                                 </div>
                             </div>
                         </div>
@@ -1631,7 +1766,9 @@
 
             // Initialize dynamic lists
             if (isRestaurant) {
+                renderTips();
                 renderWarnings();
+                renderPhotos();
             }
             if (isOnsen) {
                 renderPhotos();
@@ -1663,6 +1800,52 @@
             }
         }
 
+        function renderTips() {
+            const tips = currentPlace.local_knowledge?.tips || [];
+            const container = document.getElementById('tipsList');
+            if (!container) return;
+
+            container.innerHTML = '<div class="tag-input">' +
+                tips.map(t => `
+                    <span class="tag tip-tag">
+                        👍 ${t}
+                        <span class="tag-remove" onclick="removeTip('${t.replace(/'/g, "\\'")}')">×</span>
+                    </span>
+                `).join('') +
+            '</div>';
+        }
+
+        function addTip(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const tip = input.value.trim();
+                if (tip) {
+                    if (!currentPlace.local_knowledge) {
+                        currentPlace.local_knowledge = {};
+                    }
+                    if (!currentPlace.local_knowledge.tips) {
+                        currentPlace.local_knowledge.tips = [];
+                    }
+                    currentPlace.local_knowledge.tips.push(tip);
+
+                    // Mark as manually edited
+                    if (!currentPlace.manual_overrides) currentPlace.manual_overrides = {};
+                    currentPlace.manual_overrides.local_knowledge = true;
+
+                    input.value = '';
+                    renderTips();
+                }
+            }
+        }
+
+        function removeTip(tip) {
+            if (currentPlace.local_knowledge?.tips) {
+                currentPlace.local_knowledge.tips = currentPlace.local_knowledge.tips.filter(t => t !== tip);
+                renderTips();
+            }
+        }
+
         function renderWarnings() {
             const warnings = currentPlace.local_knowledge?.warnings || [];
             const container = document.getElementById('warningsList');
@@ -1670,8 +1853,8 @@
 
             container.innerHTML = '<div class="tag-input">' +
                 warnings.map(w => `
-                    <span class="tag">
-                        ${w}
+                    <span class="tag warning-tag">
+                        ⚠️ ${w}
                         <span class="tag-remove" onclick="removeWarning('${w.replace(/'/g, "\\'")}')">×</span>
                     </span>
                 `).join('') +
@@ -1680,6 +1863,7 @@
 
         function addWarning(event) {
             if (event.key === 'Enter') {
+                event.preventDefault();
                 const input = event.target;
                 const warning = input.value.trim();
                 if (warning) {
@@ -1858,18 +2042,27 @@
                     const vegetarian = getFieldValue('vegetarian_friendly');
                     currentPlace.enhanced_data.vegetarian_friendly = vegetarian === 'true' ? true : vegetarian === 'false' ? false : null;
 
+                    // Manual photos for restaurants
+                    currentPlace.manual_photos = getCheckboxValue('manual_photos');
+
                     if (!currentPlace.local_knowledge) currentPlace.local_knowledge = {};
                     currentPlace.local_knowledge.navigation_tips = getFieldValue('navigation_tips') || null;
                     currentPlace.local_knowledge.notes = getFieldValue('notes') || null;
+                    // Tips and warnings are already updated via addTip/addWarning functions
 
                     if (!currentPlace.local_knowledge.verified_features) currentPlace.local_knowledge.verified_features = {};
                     currentPlace.local_knowledge.verified_features.wifi = getCheckboxValue('vf_wifi');
                     currentPlace.local_knowledge.verified_features.parking = getCheckboxValue('vf_parking');
                     currentPlace.local_knowledge.verified_features.smoking = getCheckboxValue('vf_smoking');
                     currentPlace.local_knowledge.verified_features.reservation = getCheckboxValue('vf_reservation');
+                    currentPlace.local_knowledge.verified_features.english_staff = getCheckboxValue('vf_english_staff');
+                    currentPlace.local_knowledge.verified_features.kid_friendly = getCheckboxValue('vf_kid_friendly');
 
                     currentPlace.manual_overrides.enhanced_data = true;
                     currentPlace.manual_overrides.local_knowledge = true;
+                    if (currentPlace.manual_photos || (currentPlace.photos && currentPlace.photos.length > 0)) {
+                        currentPlace.manual_overrides.photos = true;
+                    }
                 }
 
                 // Onsen specific

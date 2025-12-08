@@ -1,391 +1,404 @@
 # Annual Update Guide - Nozawa Onsen App
 
-Complete workflow for refreshing restaurant data from Google Places API while preserving all manual edits made through the admin panel.
+Complete workflow for refreshing restaurant data from Google Places API while preserving all manual edits.
+
+**Updated December 2025** - Now uses PostgreSQL-native workflow (no JSON files required)
+
+---
+
+## Claude Code Prompt
+
+Copy and paste this to have Claude run the annual update:
+
+```
+Run the annual Google Places refresh for Nozawa restaurants.
+Reference: ANNUAL_UPDATE_GUIDE.md in nozawa-backend
+
+1. First do a dry run with --include-new to preview
+2. Show me the results and ask before running live
+3. Add any new places I approve
+4. Skip closed places unless I say otherwise
+```
+
+---
 
 ## When to Run
 
 Run this process annually (typically September before ski season) to:
 - Refresh restaurant hours, ratings, and reviews
-- Update restaurant photos
+- Update restaurant photos from Google
+- Update review snippets and insights (English menu, cash only, wait times, vegetarian)
 - Check for permanently closed restaurants
-- Add any new restaurants to Nozawa
+- Discover new restaurants in Nozawa
 
 ## Prerequisites
 
-- Google Places API key active
+- Google Places API key active (set in `.env` as `GOOGLE_PLACES_API_KEY`)
+- PostgreSQL database access (Railway)
+- Node.js installed locally
 - Access to admin panel (admin.html)
-- Node.js and scripts installed in `nozawa-backend/scripts/`
+
+---
+
+## Quick Reference (TL;DR)
+
+```bash
+cd nozawa-backend/scripts
+
+# 1. Preview changes (no database modifications)
+node refreshGoogleDataPostgres.js --dry-run --include-new
+
+# 2. Run actual update
+node refreshGoogleDataPostgres.js
+
+# 3. Add any new places found (optional)
+node addNewPlaceFromGoogle.js <google_place_id>
+```
 
 ---
 
 ## Step-by-Step Workflow
 
-### Step 1: Backup Current Data
+### Step 1: Preview Changes (Dry Run)
 
-**Always backup before making changes!**
+Always preview what will happen before making changes:
 
-1. Open `admin.html` in your browser
-2. Click "📡 Load from Server" to get latest data
-3. Click "📥 Download Backup"
-4. Save as: `backups/nozawa_places_unified_YYYY-MM-DD.json`
 ```bash
-cd nozawa-backend
-git add backups/
-git commit -m "Backup before 2026 annual update"
-git push
+cd nozawa-backend/scripts
+node refreshGoogleDataPostgres.js --dry-run --include-new
 ```
+
+**What this shows:**
+- Which restaurants will be updated
+- New places found in Google (not yet in database)
+- Places that may have closed (in DB but not found in Google)
+- Estimated API cost
+
+**Review the output carefully!**
 
 ---
 
-### Step 2: Fetch Fresh Restaurant Data
+### Step 2: Run the Google Refresh
 
-Fetch latest data from Google Places API:
+Once satisfied with the dry run, execute the actual update:
+
 ```bash
-cd nozawa-backend/scripts
-node fetchAllRestaurantData.js
+node refreshGoogleDataPostgres.js
 ```
 
 **What happens:**
-- Queries Google Places API for restaurants in Nozawa
-- Downloads ratings, hours, photos, reviews
-- Saves to `nozawa_restaurants_complete.json`
+- Fetches fresh data from Google Places API
+- Updates `place_google_data` table ONLY
+- **NEVER touches** `place_overrides` or `place_local_knowledge`
+- Creates a JSON report in `scripts/google_refresh_report_YYYY-MM-DD.json`
 
-**Time:** ~10-15 minutes
+**Time:** ~10-15 minutes (depending on restaurant count)
 
 ---
 
-### Step 3: Merge with Manual Edits
+### Step 3: Review New Places (Optional)
 
-Combine fresh Google data with your manual edits:
+If the refresh found new restaurants:
+
 ```bash
-node mergeWithManualEdits.js
+# Check the report
+cat scripts/google_refresh_report_*.json | grep -A5 "newPlaces"
+
+# Add a new place by its Google Place ID
+node addNewPlaceFromGoogle.js ChIJ2T5hZ9DXGGAR0tKRWL8JqeI
 ```
 
-**What gets preserved:**
-- ✅ `visible_in_app` settings (hidden restaurants stay hidden)
-- ✅ `manual_photos` for onsens
-- ✅ `local_knowledge` (warnings, tips, navigation)
-- ✅ `enhanced_data` manual edits
-- ✅ `subcategory` classifications
-- ✅ All onsens and lifts (100% unchanged)
-
-**What gets updated:**
-- ✅ Ratings and review counts from Google
-- ✅ Hours and contact info
-- ✅ Google photos (except manual_photos)
-- ✅ Restaurant status (open/closed)
-
-**Output:** `nozawa_places_unified_updated.json`
-
-**Review the console output carefully!** It shows what was preserved.
+After adding, use the admin panel to:
+1. Set visibility (show/hide)
+2. Add local knowledge (tips, warnings)
+3. Set subcategory (Izakaya, Ramen, etc.)
 
 ---
 
-### Step 4: Review Merged Data
+### Step 4: Review Potentially Closed Places
 
-**Before deploying, review the merged file:**
+The refresh report lists places in the database but not found in Google:
+
 ```bash
-# Copy to main location
-cp scripts/nozawa_places_unified_updated.json nozawa_places_unified.json
-
-# Open admin panel
-open admin.html
+cat scripts/google_refresh_report_*.json | grep -A10 "potentiallyClosed"
 ```
 
-In the admin panel:
-1. Click "📤 Upload JSON"
-2. Select `nozawa_places_unified.json`
-3. Check several restaurants:
-   - Verify previously hidden items are still hidden
-   - Check local knowledge preserved
-   - Verify onsens show "📸 Manual" badge
-4. Filter by "Hidden from App" to see all hidden items
-
-**Look for issues:**
-- Restaurants that should be hidden but aren't
-- Lost warnings/tips
-- Missing manual edits
+**For each place, decide:**
+- Mark as `closed_permanently` in admin panel, OR
+- Keep if it's a known local spot not on Google
 
 ---
 
-### Step 5: Update Photos (Optional)
+### Step 5: Verify in Admin Panel
 
-If you want to download fresh photos from Google:
-```bash
-cd scripts
-node updatePhotos.js
+1. Open admin.html
+2. Click "Load from Server"
+3. Spot check several restaurants:
+   - Verify ratings updated
+   - Check opening hours look current
+   - Confirm photos are showing
+
+---
+
+## Photo Management
+
+### How Photos Work
+
+The system supports three photo modes:
+
+| Mode | `manual_photos` | `photo_urls` | Result |
+|------|-----------------|--------------|--------|
+| **Google Only** | `false` | empty | Only Google photos shown |
+| **Manual + Google** | `false` | has URLs | Manual photos FIRST, then Google |
+| **Manual Only** | `true` | has URLs | ONLY manual photos (protected) |
+
+### Adding Manual Photos
+
+To add curated/manual photos that appear FIRST (before Google photos):
+
+1. Open place in admin panel
+2. Add photo URLs to the photo list
+3. Leave "Protect Photos from Annual Updates" **unchecked**
+4. Save changes
+
+Your manual photos will appear first, followed by Google photos.
+
+### Protecting Photos (Onsens)
+
+For onsens and places where you want ONLY manual photos (no Google):
+
+1. Open place in admin panel
+2. Check "Protect Photos from Annual Updates"
+3. Add your photo URLs
+4. Save changes
+
+Google refresh will **never** touch these photos.
+
+---
+
+## What Gets Updated vs Protected
+
+### Updated by Google Refresh (place_google_data)
+
+| Field | Description |
+|-------|-------------|
+| `google_rating` | Star rating from Google |
+| `google_review_count` | Number of reviews |
+| `google_price_range` | Price level (¥, ¥¥, etc.) |
+| `google_phone` | Phone number |
+| `google_website` | Website URL |
+| `opening_hours` | Business hours |
+| `photos` | Photo URLs from Google |
+| `google_types` | Categories from Google |
+| `editorial_summary` | Google's description |
+| `features` | Takeout, delivery, etc. |
+
+### Updated by Google Refresh (places.review_analysis)
+
+| Field | Description |
+|-------|-------------|
+| `review_count` | Number of reviews analyzed |
+| `insights.mentions_english` | Reviews mention English menu/speakers |
+| `insights.mentions_cash_only` | Reviews mention cash-only policy |
+| `insights.mentions_wait` | Reviews mention queues/busy times |
+| `insights.mentions_vegetarian` | Reviews mention vegetarian options |
+| `insights.recent_reviews` | Up to 5 review snippets with rating, time, text |
+
+### NEVER Touched (place_overrides)
+
+| Field | Description |
+|-------|-------------|
+| `name_override` | Custom name |
+| `rating_override` | Manual rating |
+| `phone_override` | Custom phone |
+| `hours_override` | Custom hours |
+| `cuisine` | Cuisine type |
+| `budget_range` | Price range text |
+| `english_menu` | English menu available |
+| `accepts_cards` | Credit cards accepted |
+| `photo_urls` | Manual photo URLs |
+| `manual_photos` | Photo protection flag |
+
+### NEVER Touched (place_local_knowledge)
+
+| Field | Description |
+|-------|-------------|
+| `tips` | Local tips array |
+| `warnings` | Warnings array |
+| `navigation_tips` | How to find it |
+| `description_override` | Custom description |
+| `insider_notes` | Staff notes |
+| `features_verified` | Verified features |
+
+### NEVER Touched (places core)
+
+| Field | Description |
+|-------|-------------|
+| `visible_in_app` | Show/hide in app |
+| `category` | restaurant/onsen/lift |
+| `subcategory` | Cuisine type |
+| `status` | active/closed |
+| `latitude/longitude` | Coordinates |
+
+---
+
+## Data Architecture
+
 ```
-
-**What happens:**
-- Downloads new restaurant photos from Google
-- **Skips onsens with `manual_photos: true`**
-- Saves to `../downloaded_photos/`
-
-**Time:** ~30-60 minutes (depending on how many changed)
-
-**Note:** Photos marked with `manual_photos: true` are NEVER overwritten.
-
----
-
-### Step 6: Deploy to Railway
-
-Upload your reviewed and tested data to production:
-
-1. Open `admin.html` in browser
-2. Ensure you have the reviewed `nozawa_places_unified.json` loaded
-3. Click "💾 Save to Server"
-4. Confirm the backup creation
-5. Verify "Live Server Data" badge appears
-
-**Railway now has your updated data!**
-
-The server automatically:
-- Creates timestamped backup in `backups/` folder
-- Overwrites live `nozawa_places_unified.json`
-- Reloads data in memory
-
----
-
-### Step 7: Commit to Git
-
-Save your changes to version control:
-```bash
-cd nozawa-backend
-
-# Add updated data file
-git add nozawa_places_unified.json
-
-# Add photos if they changed
-git add downloaded_photos/
-
-# Commit with descriptive message
-git commit -m "Annual update 2026 - Refreshed restaurant data from Google API"
-git push origin main
-```
-
----
-
-### Step 8: Update Mobile App (If Photos Changed)
-
-Only needed if photos were updated in Step 5:
-```bash
-cd nozawa-test
-
-# Copy photos to app assets
-cp -r ../nozawa-backend/downloaded_photos/* assets/photos/
-
-# Regenerate photo mapping
-node scripts/generatePhotoMap.js
-
-# Commit changes
-git add assets/photos/ utils/photoMap.js
-git commit -m "Update photos - annual 2026"
-git push
-
-# Build for TestFlight
-eas build --platform ios
-eas submit --platform ios
-```
-
-**Time:** 
-- Build: ~20 minutes
-- TestFlight processing: ~30-60 minutes
-
----
-
-## Quick Reference
-
-### Full Update (All Steps)
-```bash
-# 1. Backup first via admin panel!
-
-# 2. Fetch and merge
-cd nozawa-backend/scripts
-node fetchAllRestaurantData.js        # ~10-15 min
-node mergeWithManualEdits.js          # ~1 min
-
-# 3. Optional: Update photos
-node updatePhotos.js                  # ~30-60 min
-
-# 4. Review in admin panel (manual step)
-
-# 5. Upload via admin "Save to Server" (manual step)
-
-# 6. Commit to Git
-cd nozawa-backend
-git add .
-git commit -m "Annual update $(date +%Y)"
-git push
-```
-
----
-
-## Protected Data (Never Overwritten)
-
-The following fields are **NEVER** overwritten during annual updates:
-
-### Admin-Controlled Settings
-- `visible_in_app` - Hide/show toggle
-- `manual_photos` - Photo protection flag
-- `manual_overrides` - Tracks all manual edits
-
-### Manual Content
-- `local_knowledge.warnings` - Custom warnings
-- `local_knowledge.notes` - Local tips
-- `local_knowledge.navigation_tips` - Directions
-- `local_knowledge.verified_features` - Checkboxes
-
-### Manual Classifications
-- `subcategory` - If manually changed from "Restaurant"
-- `enhanced_data` - If cuisine/budget manually added
-
-### Complete Categories
-- **All onsens** - 100% preserved (no Google data)
-- **All lifts** - 100% preserved (no Google data)
-
----
-
-## Troubleshooting
-
-### Lost Manual Edits
-
-**Problem:** After annual update, some manual edits disappeared
-
-**Solution:**
-1. Check `nozawa-backend/backups/` for pre-update backup
-2. Load backup in admin panel: "📤 Upload JSON"
-3. Find the lost edits
-4. Re-apply them
-5. "💾 Save to Server"
-
-### Photos Overwritten for Onsens
-
-**Problem:** Onsen photos were replaced during update
-
-**Solution:**
-1. Open admin panel
-2. Find affected onsens
-3. Check "📸 Protect Photos from Annual Updates"
-4. Re-add correct photo URLs
-5. "💾 Save Changes" → "💾 Save to Server"
-
-### Restaurant Not Showing
-
-**Problem:** New restaurant isn't visible in app
-
-**Check:**
-1. `visible_in_app` is `true` (not `false`)
-2. `category` is `"restaurant"` (not typo)
-3. `status` is `"active"` (not `"closed_permanently"`)
-
-### Version Conflicts Between Git and Railway
-
-**Problem:** Git repo and Railway server have different data
-
-**Solution - Railway is source of truth:**
-1. Open admin panel
-2. "📡 Load from Server"
-3. "📥 Download Backup"
-4. Replace local file
-5. Commit to Git
-```bash
-cd nozawa-backend
-cp ~/Downloads/nozawa_places_unified_*.json nozawa_places_unified.json
-git add nozawa_places_unified.json
-git commit -m "Sync Git with Railway server - $(date +%Y-%m-%d)"
-git push
-```
-
----
-
-## Data Flow Diagram
-```
-Annual Update Flow:
 ┌─────────────────────────────────────────────────────────────┐
-│  1. Google Places API (Fresh Data)                          │
-│     ↓                                                        │
-│  2. fetchAllRestaurantData.js                               │
-│     → nozawa_restaurants_complete.json                      │
-│     ↓                                                        │
-│  3. mergeWithManualEdits.js                                 │
-│     + nozawa_places_unified.json (Current with edits)       │
-│     → nozawa_places_unified_updated.json                    │
-│     ↓                                                        │
-│  4. Review in Admin Panel                                   │
-│     ↓                                                        │
-│  5. Upload to Railway (Save to Server)                      │
-│     → Creates backup automatically                          │
-│     → Updates live data                                     │
-│     ↓                                                        │
-│  6. Download & Commit to Git                                │
+│                     GOOGLE REFRESH                          │
+│  (runs annually via refreshGoogleDataPostgres.js)          │
+│                          │                                  │
+│                          ▼                                  │
+│  ┌──────────────────────────────────────────┐              │
+│  │           place_google_data              │ ← SAFE TO    │
+│  │  rating, hours, photos, google_types     │   OVERWRITE  │
+│  └──────────────────────────────────────────┘              │
+│                                                             │
+│  ┌──────────────────────────────────────────┐              │
+│  │      place_overrides + place_local_      │ ← NEVER      │
+│  │  knowledge (tips, warnings, cuisine...)  │   TOUCHED    │
+│  └──────────────────────────────────────────┘              │
+│                          │                                  │
+│                          ▼                                  │
+│  ┌──────────────────────────────────────────┐              │
+│  │        places_with_merged_data           │ ← VIEW       │
+│  │    (override > google > base)            │   AUTO-MERGE │
+│  └──────────────────────────────────────────┘              │
+└─────────────────────────────────────────────────────────────┘
+
+Photo Merge Logic (in view):
+┌─────────────────────────────────────────────────────────────┐
+│  manual_photos = true?                                      │
+│    → Only show place_overrides.photo_urls                  │
+│                                                             │
+│  Has manual photo_urls but not protected?                   │
+│    → Show manual photos FIRST, then Google photos          │
+│                                                             │
+│  No manual photos?                                          │
+│    → Only show Google photos                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
+## Scripts Reference
+
+### refreshGoogleDataPostgres.js
+
+Main refresh script - updates `place_google_data` table.
+
+```bash
+# Dry run (preview only)
+node refreshGoogleDataPostgres.js --dry-run
+
+# Dry run with new place discovery
+node refreshGoogleDataPostgres.js --dry-run --include-new
+
+# Live update
+node refreshGoogleDataPostgres.js
+
+# Live update with discovery report
+node refreshGoogleDataPostgres.js --include-new
+```
+
+### addNewPlaceFromGoogle.js
+
+Add a new restaurant from Google Place ID.
+
+```bash
+node addNewPlaceFromGoogle.js ChIJ2T5hZ9DXGGAR0tKRWL8JqeI
+```
+
+Creates entries in:
+- `places` (core info)
+- `place_google_data` (Google data)
+
+You then add local knowledge via admin panel.
+
+---
+
+## Troubleshooting
+
+### "Place not found" during refresh
+
+The restaurant may have a different Google Place ID than what's in the database.
+
+**Solution:**
+1. Search for the restaurant on Google Maps
+2. Get the new Place ID from the URL
+3. Update the `google_place_id` in the database
+
+### Photos not updating
+
+Check if `manual_photos = true` for that place.
+
+**Solution:**
+1. Open in admin panel
+2. Uncheck "Protect Photos from Annual Updates"
+3. Save and refresh
+
+### New restaurant not appearing in app
+
+Check:
+1. `visible_in_app = true`
+2. `status = 'active'`
+3. `category = 'restaurant'`
+
+### API costs higher than expected
+
+The script shows estimated cost at the end. If too high:
+- Run less frequently
+- Use `--dry-run` to preview without API calls
+- Consider reducing `MAX_PHOTOS` in config
+
+---
+
 ## File Locations
+
 ```
 nozawa-backend/
-├── nozawa_places_unified.json          # LIVE DATA (main file)
-├── admin.html                          # Admin interface
-├── backups/                            # Auto-created by server
-│   └── nozawa_places_unified_backup_*.json
-├── downloaded_photos/                  # Restaurant photos
-│   ├── restaurant_id_1/
-│   ├── restaurant_id_2/
-│   └── ...
-└── scripts/
-    ├── fetchAllRestaurantData.js       # Step 2: Fetch from Google
-    ├── mergeWithManualEdits.js         # Step 3: Merge data
-    ├── updatePhotos.js                 # Step 5: Download photos
-    ├── nozawa_restaurants_complete.json  # Temp: Fresh Google data
-    └── nozawa_places_unified_updated.json # Temp: Merged result
+├── scripts/
+│   ├── refreshGoogleDataPostgres.js    # Main refresh script
+│   ├── addNewPlaceFromGoogle.js        # Add new places
+│   └── google_refresh_report_*.json    # Generated reports
+├── migrations/
+│   └── 018_update_photo_merge_logic.sql  # Photo merge view
+├── admin.html                           # Admin interface
+└── .env                                 # API keys (GOOGLE_PLACES_API_KEY)
 ```
+
+---
+
+## Migration from JSON Workflow
+
+If you were using the old JSON-based workflow (`fetchAllRestaurantData.js` + `mergeWithManualEdits.js`), here's how to migrate:
+
+1. **Stop using JSON files** - PostgreSQL is now the source of truth
+2. **Use new script** - `refreshGoogleDataPostgres.js` instead
+3. **Admin panel still works** - It reads from/writes to PostgreSQL
+
+The old scripts still exist for reference but are deprecated.
 
 ---
 
 ## Best Practices
 
 ### Before Annual Update
-- ✅ Download backup via admin panel
-- ✅ Commit current state to Git
-- ✅ Note any recent manual edits
+- Run `--dry-run` first
+- Note current restaurant count for comparison
+- Check Google API quota/billing
 
 ### During Annual Update
-- ✅ Review merge script output carefully
-- ✅ Test in admin panel before deploying
-- ✅ Check hidden restaurants stayed hidden
-- ✅ Verify onsen photos weren't replaced
+- Monitor the script output for errors
+- Review the generated report
+- Add any new restaurants you want to include
 
 ### After Annual Update
-- ✅ Download from Railway and commit to Git
-- ✅ Test app on TestFlight
-- ✅ Verify a few restaurants in the live app
-- ✅ Keep backup for at least one season
-
-### Weekly Maintenance
-```bash
-# Sync Git with any admin panel changes
-# Download from admin → Commit to Git
-git add nozawa_places_unified.json
-git commit -m "Weekly sync - $(date +%Y-%m-%d)"
-git push
-```
+- Spot check a few restaurants in admin panel
+- Test the app to verify data displays correctly
+- Keep the report JSON for reference
 
 ---
 
-## Support & Resources
-
-**Admin Panel:** `nozawa-backend/admin.html`
-**Server API:** `https://nozawa-backend-production.up.railway.app`
-**Admin Key:** `nozawa2024`
-
-**Key Concepts:**
-- **visible_in_app:** Controls if place shows in mobile app
-- **manual_photos:** Protects onsen photos from annual overwrites
-- **manual_overrides:** Tracks which fields were manually edited
-- **google_place_id:** Links restaurant to Google Places (never edit)
-
----
-
-Last Updated: January 2025
+Last Updated: December 2025
