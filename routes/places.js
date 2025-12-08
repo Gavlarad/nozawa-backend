@@ -50,29 +50,28 @@ try {
 }
 
 /**
- * Enrich place data with onsen-specific fields from JSON
+ * Enrich place data with onsen-specific fields
+ * Priority: PostgreSQL data > JSON fallback
  */
 function enrichOnsenData(place) {
   if (place.category !== 'onsen') return place;
 
-  // Try to find local_info by external_id or name
+  // Try to find local_info by external_id or name (for temperature, hours, etc.)
   const key = place.external_id || place.name;
   const localData = onsenLocalInfo[key];
 
-  if (localData) {
-    return {
-      ...place,
-      description: localData.description || place.description_override,
-      local_tips: localData.local_tips,
-      local_info: localData.local_info
-    };
-  }
+  // PostgreSQL data takes priority for description and tips
+  const description = place.description_override || localData?.description || null;
+  const local_tips = (Array.isArray(place.tips) && place.tips.length > 0)
+    ? place.tips[0]  // Use first tip from PostgreSQL
+    : localData?.local_tips || null;
 
-  // Fallback: use description_override and tips from PostgreSQL
   return {
     ...place,
-    description: place.description_override,
-    local_tips: Array.isArray(place.tips) && place.tips.length > 0 ? place.tips.join(' ') : null
+    description,
+    local_tips,
+    // Keep local_info from JSON for temperature, hours, etc.
+    local_info: localData?.local_info || null
   };
 }
 
