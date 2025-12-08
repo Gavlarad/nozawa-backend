@@ -153,14 +153,17 @@ app.get('/api/places/autocomplete', async (req, res) => {
   // Nozawa Onsen center coordinates
   const NOZAWA_CENTER = { lat: 36.923005, lng: 138.446971 };
   const RADIUS = 5000; // 5km radius
-  
+
   try {
     const fetch = (await import('node-fetch')).default;
-    
+
+    // Use strictbounds to ONLY return results within the radius
+    // Without strictbounds, location/radius only biases results (doesn't restrict)
     const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
       `input=${encodeURIComponent(input)}` +
       `&location=${NOZAWA_CENTER.lat},${NOZAWA_CENTER.lng}` +
       `&radius=${RADIUS}` +
+      `&strictbounds=true` +
       `&key=${GOOGLE_API_KEY}`;
     
     const response = await fetch(url);
