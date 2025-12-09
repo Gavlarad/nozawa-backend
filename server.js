@@ -1554,6 +1554,102 @@ app.get('/', (req, res) => {
   });
 });
 
+// PRIVACY POLICY
+app.get('/privacy-policy', (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Nozawa Guide</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+    h1 { color: #0EA5E9; margin-bottom: 8px; }
+    h2 { color: #334155; margin-top: 32px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+    .subtitle { color: #64748b; margin-bottom: 32px; }
+    ul { padding-left: 24px; }
+    li { margin-bottom: 8px; }
+    .highlight { background: #f0f9ff; padding: 16px; border-radius: 8px; border-left: 4px solid #0EA5E9; margin: 16px 0; }
+    .contact { background: #f8fafc; padding: 20px; border-radius: 8px; margin-top: 32px; }
+    a { color: #0EA5E9; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="subtitle">Nozawa Guide App<br>Last updated: December 2024</p>
+
+  <div class="highlight">
+    <strong>Summary:</strong> We collect only what's needed to make the app work. Your data stays within your group and is never sold to third parties.
+  </div>
+
+  <h2>Data We Collect</h2>
+  <ul>
+    <li><strong>Location (optional):</strong> Your precise location is used to show you on the map, enable "Near Me" features, and provide navigation to restaurants and onsens. You can use the app without sharing location.</li>
+    <li><strong>Name:</strong> The display name you choose is shown to members of groups you join.</li>
+    <li><strong>Device Identifier:</strong> A unique device ID is used to maintain your session and identify you within groups.</li>
+    <li><strong>Check-ins & Meetups:</strong> When you check in to a location or create a meetup, this information is visible to your group members.</li>
+    <li><strong>Accommodation (optional):</strong> If you choose to share your accommodation with your group, this location is visible to group members only.</li>
+  </ul>
+
+  <h2>How We Use Your Data</h2>
+  <ul>
+    <li>To display your position on the map</li>
+    <li>To enable group features (see where friends are, coordinate meetups)</li>
+    <li>To provide navigation to restaurants, onsens, and ski lifts</li>
+    <li>To show check-ins and meetups to your group members</li>
+  </ul>
+
+  <h2>Data Sharing</h2>
+  <ul>
+    <li><strong>Within Groups:</strong> Your name, check-ins, meetups, and optionally your accommodation location are visible to members of groups you join.</li>
+    <li><strong>Third Parties:</strong> We do not sell, rent, or share your personal data with third parties for marketing purposes.</li>
+    <li><strong>Service Providers:</strong> We use Mapbox for maps (they receive map tile requests but not your personal data) and Railway for hosting.</li>
+  </ul>
+
+  <h2>Data Retention</h2>
+  <ul>
+    <li>Check-ins automatically expire after 1 hour</li>
+    <li>Meetups expire 2 hours after their scheduled time</li>
+    <li>Group membership data is retained until you leave the group</li>
+    <li>You can leave a group at any time, which removes all your data from that group</li>
+  </ul>
+
+  <h2>Data Security</h2>
+  <p>All data transmitted between the app and our servers is encrypted using HTTPS/TLS. Our servers are hosted on Railway with industry-standard security practices.</p>
+
+  <h2>Your Rights</h2>
+  <ul>
+    <li>You can leave any group at any time, removing your data from that group</li>
+    <li>You can choose not to share your location or accommodation</li>
+    <li>You can check out from locations at any time</li>
+  </ul>
+
+  <h2>Children's Privacy</h2>
+  <p>This app is not intended for children under 13. We do not knowingly collect personal information from children under 13.</p>
+
+  <h2>Changes to This Policy</h2>
+  <p>We may update this privacy policy from time to time. We will notify users of any material changes by updating the "Last updated" date.</p>
+
+  <div class="contact">
+    <h2 style="margin-top: 0; border: none;">Contact Us</h2>
+    <p>If you have questions about this privacy policy or your data, please contact us at:</p>
+    <p><strong>Email:</strong> <a href="mailto:privacy@nozawaguide.com">privacy@nozawaguide.com</a></p>
+  </div>
+</body>
+</html>
+  `);
+});
+
 // START SERVER
 async function startServer() {
   await loadRestaurantData();
