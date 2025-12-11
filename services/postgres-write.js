@@ -78,6 +78,9 @@ async function savePlacesToPostgreSQL(places, adminId) {
         const subcategory = place.subcategory || place.manual_overrides?.subcategory || null;
         const status = place.status || place.manual_overrides?.status || 'active';
 
+        // For onsens: name_jp maps to name_local
+        const nameLocal = place.name_local || place.name_jp || null;
+
         await client.query(`
           UPDATE places
           SET
@@ -93,7 +96,7 @@ async function savePlacesToPostgreSQL(places, adminId) {
           place.category || 'restaurant',
           subcategory,
           status,
-          place.name_local || null,
+          nameLocal,
           place.visible_in_app !== undefined ? place.visible_in_app : true,
           adminId,
           placeId
@@ -160,11 +163,36 @@ async function savePlacesToPostgreSQL(places, adminId) {
         ]);
 
         // ========================================
+        // 2b. For Onsens: Save local_info fields to custom_fields
+        // ========================================
+        if (place.category === 'onsen' && place.local_info) {
+          const onsenCustomFields = {
+            entrance_fee: place.local_info.entrance_fee || null,
+            temperature: place.local_info.temperature || null,
+            hours: place.local_info.hours || null
+          };
+          await client.query(`
+            UPDATE place_overrides
+            SET custom_fields = $1, updated_at = NOW()
+            WHERE place_id = $2
+          `, [JSON.stringify(onsenCustomFields), placeId]);
+        }
+
+        // ========================================
         // 3. UPSERT PLACE_LOCAL_KNOWLEDGE TABLE
         // ========================================
         const localKnowledge = place.local_knowledge || {};
-        const tips = localKnowledge.tips || [];
+        let tips = localKnowledge.tips || [];
         const warnings = localKnowledge.warnings || [];
+
+        // For onsens: also check local_info.local_tips (string format from admin)
+        if (place.category === 'onsen' && place.local_info?.local_tips) {
+          // Convert string to array (split by newlines)
+          const localTipsString = place.local_info.local_tips;
+          if (typeof localTipsString === 'string' && localTipsString.trim()) {
+            tips = localTipsString.split('\n').filter(t => t.trim());
+          }
+        }
 
         // navigation_tips can be a string (old format) or array (new format)
         // Normalize to array for PostgreSQL TEXT[] type
@@ -177,7 +205,11 @@ async function savePlacesToPostgreSQL(places, adminId) {
           }
         }
 
-        const description = localKnowledge.description || null;
+        // For onsens: also check top-level description field
+        let description = localKnowledge.description || null;
+        if (place.category === 'onsen' && place.description) {
+          description = place.description;
+        }
         const insiderNotes = localKnowledge.notes || null;
         const featuresVerified = localKnowledge.verified_features || {};
 
@@ -316,7 +348,8 @@ async function exportPlacesToJSON() {
         gd.google_types,
         gd.editorial_summary,
         gd.features as google_features,
-        gd.synced_at as google_synced_at
+        gd.synced_at as google_synced_at,
+        po.custom_fields
       FROM places p
       LEFT JOIN place_google_data gd ON p.id = gd.place_id
       LEFT JOIN place_overrides po ON p.id = po.place_id
@@ -368,6 +401,25 @@ async function exportPlacesToJSON() {
         if (row.description) place.local_knowledge.description = row.description;
         if (row.notes) place.local_knowledge.notes = row.notes;
         if (row.features_verified) place.local_knowledge.verified_features = row.features_verified;
+      }
+
+      // For onsens: also set top-level description and local_info for backward compatibility
+      if (row.category === 'onsen') {
+        if (row.description) {
+          place.description = row.description;
+        }
+        // Build local_info structure for onsen-specific fields from custom_fields
+        const customFields = row.custom_fields || {};
+        place.local_info = {
+          entrance_fee: customFields.entrance_fee || null,
+          temperature: customFields.temperature || null,
+          hours: customFields.hours || null,
+          local_tips: row.tips ? row.tips.join('\n') : null
+        };
+        // Also add name_jp at top level for onsens
+        if (row.name_local) {
+          place.name_jp = row.name_local;
+        }
       }
 
       // Google data (for admin panel - shows raw Google data separately)
