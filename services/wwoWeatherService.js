@@ -156,7 +156,17 @@ class WWOWeatherService {
    * Transform WWO response to match existing frontend format
    */
   transformWWOResponse(wwoData) {
-    const weather = wwoData.data.weather;
+    const rawWeather = wwoData.data.weather;
+
+    // Deduplicate by date (WWO returns multiple entries per day)
+    const weatherByDate = new Map();
+    rawWeather.forEach(entry => {
+      if (!weatherByDate.has(entry.date)) {
+        weatherByDate.set(entry.date, entry);
+      }
+    });
+    const weather = Array.from(weatherByDate.values());
+
     const today = weather[0];
 
     // Get current conditions from first hourly slot
