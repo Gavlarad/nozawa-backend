@@ -1,13 +1,16 @@
 /**
  * Weather API Routes
  *
- * Endpoints for fetching weather data from Open-Meteo API with PostgreSQL caching.
+ * Endpoints for fetching weather data with PostgreSQL caching.
+ * Primary source: World Weather Online (ski-specific)
+ * Fallback: Open-Meteo (if WWO unavailable)
+ *
  * All endpoints are rate-limited to prevent abuse.
  */
 
 const express = require('express');
 const router = express.Router();
-const weatherService = require('../services/weatherService');
+const weatherService = require('../services/unifiedWeatherService');
 const { apiLimiter } = require('../middleware/security');
 
 /**
@@ -41,7 +44,7 @@ router.get('/current', apiLimiter, async (req, res) => {
     res.status(500).json({
       error: 'Failed to fetch weather data',
       message: error.message,
-      hint: 'Open-Meteo API may be unavailable. Please try again later.'
+      hint: 'Weather API may be unavailable. Please try again later.'
     });
   }
 });
@@ -74,7 +77,7 @@ router.get('/forecast', apiLimiter, async (req, res) => {
     res.status(500).json({
       error: 'Failed to fetch weather forecast',
       message: error.message,
-      hint: 'Open-Meteo API may be unavailable. Please try again later.'
+      hint: 'Weather API may be unavailable. Please try again later.'
     });
   }
 });
@@ -103,6 +106,34 @@ router.get('/cache-status', apiLimiter, (req, res) => {
     console.error('❌ Cache status error:', error);
     res.status(500).json({
       error: 'Failed to get cache status',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/weather/service-info
+ * Get information about which weather service is active
+ *
+ * Returns:
+ * - Primary service name
+ * - Fallback service name
+ * - Whether WWO is configured
+ */
+router.get('/service-info', apiLimiter, (req, res) => {
+  try {
+    const info = weatherService.getServiceInfo();
+
+    res.json({
+      success: true,
+      ...info,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Service info error:', error);
+    res.status(500).json({
+      error: 'Failed to get service info',
       message: error.message
     });
   }
