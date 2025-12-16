@@ -143,12 +143,12 @@ router.get('/service-info', apiLimiter, (req, res) => {
  * POST /api/weather/clear-cache
  * Clear weather cache to force fresh fetch
  */
-router.post('/clear-cache', apiLimiter, (req, res) => {
+router.post('/clear-cache', apiLimiter, async (req, res) => {
   try {
-    weatherService.clearCache();
+    await weatherService.clearCache();
     res.json({
       success: true,
-      message: 'Cache cleared',
+      message: 'Cache cleared (memory + PostgreSQL)',
       timestamp: new Date().toISOString()
     });
   } catch (error) {

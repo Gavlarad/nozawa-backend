@@ -507,11 +507,19 @@ class WWOWeatherService {
   }
 
   /**
-   * Clear cache
+   * Clear cache (memory and PostgreSQL)
    */
-  clearCache() {
+  async clearCache() {
     this.memoryCache = { data: null, timestamp: null };
-    console.log('[WWO Weather] Cache cleared');
+
+    // Also clear PostgreSQL cache
+    try {
+      await this.pool.query('DELETE FROM weather_cache WHERE resort_id = $1', [1]);
+      console.log('[WWO Weather] Memory and PostgreSQL cache cleared');
+    } catch (error) {
+      console.error('[WWO Weather] Failed to clear PostgreSQL cache:', error.message);
+      console.log('[WWO Weather] Memory cache cleared');
+    }
   }
 
   /**

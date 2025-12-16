@@ -87,9 +87,9 @@ class UnifiedWeatherService {
   /**
    * Clear all caches
    */
-  clearCache() {
+  async clearCache() {
     if (this.useWWO) {
-      wwoService.clearCache();
+      await wwoService.clearCache();
     }
     openMeteoService.clearCache();
     console.log('[Weather] All caches cleared');
