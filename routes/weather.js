@@ -139,4 +139,25 @@ router.get('/service-info', apiLimiter, (req, res) => {
   }
 });
 
+/**
+ * POST /api/weather/clear-cache
+ * Clear weather cache to force fresh fetch
+ */
+router.post('/clear-cache', apiLimiter, (req, res) => {
+  try {
+    weatherService.clearCache();
+    res.json({
+      success: true,
+      message: 'Cache cleared',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Cache clear error:', error);
+    res.status(500).json({
+      error: 'Failed to clear cache',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;
