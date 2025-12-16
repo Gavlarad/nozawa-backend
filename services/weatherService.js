@@ -10,15 +10,12 @@
  * Update strategy: On-demand (fetches only when cache expires and user requests)
  */
 
-const { Pool } = require('pg');
+const { pool } = require('../db/pool');
 
 class WeatherService {
   constructor() {
-    // PostgreSQL connection pool
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-    });
+    // Use shared PostgreSQL connection pool
+    this.pool = pool;
 
     // In-memory cache for ultra-fast access
     this.memoryCache = {

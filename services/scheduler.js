@@ -1,15 +1,9 @@
 const cron = require('node-cron');
 const NozawaLiftScraper = require('./liftScraper');
-const { Pool } = require('pg');
+const { pool } = require('../db/pool');
 
 const scraper = new NozawaLiftScraper();
 let scrapeResults = null;
-
-// PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
 
 // Store results for access by routes
 function getLatestScrapeResults() {

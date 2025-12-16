@@ -8,7 +8,7 @@ const helmet = require('helmet');
 const fs = require('fs');
 const path = require('path');
 const scheduler = require('./services/scheduler');
-const { Pool } = require('pg');
+const { pool, testConnection } = require('./db/pool');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { authenticateAdmin } = require('./middleware/auth');
@@ -28,36 +28,7 @@ const {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Database connection - proper configuration for Railway
-let pool;
-
-if (process.env.DATABASE_URL) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? {
-      rejectUnauthorized: false
-    } : false
-  });
-} else {
-  console.error('DATABASE_URL not found!');
-  pool = new Pool({
-    host: 'localhost',
-    port: 5432,
-    database: 'test',
-    user: 'test',
-    password: 'test'
-  });
-}
-
-// Test database connection on startup
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('Error connecting to database:', err.stack);
-  } else {
-    console.log('Database connected successfully');
-    release();
-  }
-});
+// Database pool is imported from ./db/pool.js (shared across all modules)
 
 // ============================================
 // SECURITY MIDDLEWARE
@@ -1652,6 +1623,9 @@ app.get('/privacy-policy', (req, res) => {
 
 // START SERVER
 async function startServer() {
+  // Test database connection first
+  await testConnection();
+
   await loadRestaurantData();
   await scheduler.initializeScheduler();  // Now async - loads from PostgreSQL
 
@@ -1663,6 +1637,7 @@ async function startServer() {
     console.log(`🌡️  Weather service ready (cached)`);
     console.log(`🎿 Lift status monitoring active`);
     console.log(`👥 Group management ready`);
+    console.log(`🗄️  Database pool: shared (max 10 connections)`);
     console.log('='.repeat(40));
   });
 }

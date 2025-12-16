@@ -9,15 +9,9 @@
 
 const express = require('express');
 const router = express.Router();
-const { Pool } = require('pg');
+const { pool } = require('../db/pool');
 const fs = require('fs');
 const path = require('path');
-
-// PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
 
 // Load onsen local_info data from JSON (temporary until migrated to PostgreSQL)
 let onsenLocalInfo = {};

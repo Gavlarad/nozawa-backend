@@ -10,13 +10,7 @@
  * - place_local_knowledge (tips, warnings, navigation, etc.)
  */
 
-const { Pool } = require('pg');
-
-// PostgreSQL connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const { pool } = require('../db/pool');
 
 /**
  * Save places data directly to PostgreSQL
