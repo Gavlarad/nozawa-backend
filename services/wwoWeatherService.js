@@ -158,15 +158,31 @@ class WWOWeatherService {
   transformWWOResponse(wwoData) {
     const rawWeather = wwoData.data.weather;
 
-    // Deduplicate by date (WWO returns multiple entries per day)
+    // WWO returns multiple entries per date (each with 1 hourly slot)
+    // We need to MERGE them into one entry per date with all hourly slots
     const weatherByDate = new Map();
     rawWeather.forEach(entry => {
       if (!weatherByDate.has(entry.date)) {
-        weatherByDate.set(entry.date, entry);
+        // First entry for this date - keep all daily-level fields
+        weatherByDate.set(entry.date, {
+          ...entry,
+          hourly: [...(entry.hourly || [])]
+        });
+      } else {
+        // Merge hourly data into existing entry
+        const existing = weatherByDate.get(entry.date);
+        if (entry.hourly) {
+          existing.hourly.push(...entry.hourly);
+        }
       }
     });
-    const weather = Array.from(weatherByDate.values());
 
+    // Sort hourly data by time within each day
+    weatherByDate.forEach(day => {
+      day.hourly.sort((a, b) => parseInt(a.time) - parseInt(b.time));
+    });
+
+    const weather = Array.from(weatherByDate.values());
     const today = weather[0];
 
     // Get current conditions from first hourly slot
