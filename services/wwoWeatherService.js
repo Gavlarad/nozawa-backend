@@ -249,18 +249,23 @@ class WWOWeatherService {
       precipitation_probability_max: weatherDays.map(d => parseInt(d.chanceofsnow) || 0)
     };
 
+    // Calculate wind chill for apparent temperature
+    const temp = parseFloat(levelData.tempC) || 0;
+    const wind = parseFloat(levelData.windspeedKmph) || 0;
+    const feelsLike = this.calculateWindChill(temp, wind);
+
     return {
       location: locationName,
       elevation: elevation,
       current: {
         time: new Date().toISOString(),
-        temperature_2m: parseFloat(levelData.tempC) || 0,
+        temperature_2m: temp,
         relative_humidity_2m: parseInt(currentHourly.humidity) || 0,
-        apparent_temperature: parseFloat(levelData.tempC) || 0, // WWO doesn't have feels-like per level
+        apparent_temperature: feelsLike,
         precipitation: parseFloat(currentHourly.precipMM) || 0,
         snowfall: parseFloat(currentHourly.snowfall_cm) || 0,
         weather_code: this.mapWWOWeatherCode(parseInt(levelData.weatherCode) || 0),
-        wind_speed_10m: parseFloat(levelData.windspeedKmph) || 0,
+        wind_speed_10m: wind,
         wind_direction_10m: parseInt(levelData.winddirDegree) || 0,
         // WWO extras
         weather_desc: levelData.weatherDesc?.[0]?.value || 'Unknown',
@@ -294,6 +299,28 @@ class WWOWeatherService {
     const jstHour = (now.getUTCHours() + 9) % 24;
     // WWO hourly is every 3 hours: 0, 3, 6, 9, 12, 15, 18, 21
     return Math.floor(jstHour / 3);
+  }
+
+  /**
+   * Calculate wind chill (feels like) temperature
+   * Uses Environment Canada formula, valid for T <= 10°C and V >= 4.8 km/h
+   * @param {number} tempC - Temperature in Celsius
+   * @param {number} windKmh - Wind speed in km/h
+   * @returns {number} Wind chill temperature in Celsius
+   */
+  calculateWindChill(tempC, windKmh) {
+    // Wind chill only applies when temp <= 10°C and wind >= 4.8 km/h
+    if (tempC > 10 || windKmh < 4.8) {
+      return tempC;
+    }
+
+    // Environment Canada wind chill formula
+    const windChill = 13.12 +
+      (0.6215 * tempC) -
+      (11.37 * Math.pow(windKmh, 0.16)) +
+      (0.3965 * tempC * Math.pow(windKmh, 0.16));
+
+    return Math.round(windChill);
   }
 
   /**
