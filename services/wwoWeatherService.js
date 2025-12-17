@@ -286,23 +286,27 @@ class WWOWeatherService {
   }
 
   /**
-   * Get current hour index (WWO uses 0, 300, 600, etc for time)
+   * Get current hour index in JST (WWO uses 0, 300, 600, etc for time)
    */
   getCurrentHourIndex() {
-    const hour = new Date().getHours();
+    // Get current hour in JST (UTC+9) since WWO data is in JST
+    const now = new Date();
+    const jstHour = (now.getUTCHours() + 9) % 24;
     // WWO hourly is every 3 hours: 0, 3, 6, 9, 12, 15, 18, 21
-    return Math.floor(hour / 3);
+    return Math.floor(jstHour / 3);
   }
 
   /**
-   * Convert WWO time format to ISO string
+   * Convert WWO time format to ISO string with JST timezone
+   * WWO returns times in local timezone of the queried location (JST for Nozawa)
    */
   convertWWOTime(date, time) {
-    // WWO time is like "0", "300", "600" etc (HHMM without leading zeros)
+    // WWO time is like "0", "100", "300", "600" etc (HHMM without leading zeros)
     const timeStr = time.padStart(4, '0');
     const hours = timeStr.slice(0, 2);
     const minutes = timeStr.slice(2, 4);
-    return `${date}T${hours}:${minutes}`;
+    // Add JST timezone offset (+09:00) so Date parsing works correctly
+    return `${date}T${hours}:${minutes}:00+09:00`;
   }
 
   /**
