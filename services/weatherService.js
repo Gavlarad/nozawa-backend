@@ -345,6 +345,32 @@ class WeatherService {
   }
 
   /**
+   * Calculate snowfall for past N hours from hourly data
+   * @param {Object} hourlyData - Hourly forecast data
+   * @param {number} hours - Number of past hours to sum
+   * @returns {number} Total snowfall in cm over the past hours
+   */
+  calculatePastSnowfall(hourlyData, hours) {
+    if (!hourlyData || !hourlyData.time || !hourlyData.snowfall) {
+      return 0;
+    }
+
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
+    let total = 0;
+
+    for (let i = 0; i < hourlyData.time.length; i++) {
+      const forecastTime = new Date(hourlyData.time[i]);
+      // Include hours that are in the past but after the cutoff
+      if (forecastTime >= cutoffTime && forecastTime < now) {
+        total += hourlyData.snowfall[i] || 0;
+      }
+    }
+
+    return Math.round(total * 10) / 10;
+  }
+
+  /**
    * Get 6-hourly snowfall data for the next 72 hours (12 data points)
    * @param {Object} hourlyData - Hourly forecast data
    * @returns {Array} Array of { time, snowfall } objects for each 6-hour block
@@ -411,6 +437,8 @@ class WeatherService {
       next_24h_snowfall: this.calculateNext24HourSnowfall(level.hourly),
       next_48h_snowfall: this.calculateNext48HourSnowfall(level.hourly),
       next_72h_snowfall: this.calculateNext72HourSnowfall(level.hourly),
+      // Past snowfall (for "X cm in last 6h" display)
+      last_6h_snowfall: this.calculatePastSnowfall(level.hourly, 6),
       // 6-hourly breakdown for line graph (12 data points over 72h)
       snowfall_6hourly: this.get6HourlySnowfall(level.hourly),
       // Calendar day forecasts (midnight-to-midnight)

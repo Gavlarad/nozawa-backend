@@ -450,7 +450,7 @@ class WWOWeatherService {
   }
 
   /**
-   * Calculate snowfall for given hours from hourly data
+   * Calculate snowfall for given hours from hourly data (future)
    */
   calculateSnowfallForHours(hourlyData, hours) {
     if (!hourlyData?.time || !hourlyData?.snowfall) return 0;
@@ -471,6 +471,27 @@ class WWOWeatherService {
   }
 
   /**
+   * Calculate snowfall for past N hours from hourly data
+   */
+  calculatePastSnowfall(hourlyData, hours) {
+    if (!hourlyData?.time || !hourlyData?.snowfall) return 0;
+
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
+    let total = 0;
+
+    for (let i = 0; i < hourlyData.time.length; i++) {
+      const forecastTime = new Date(hourlyData.time[i]);
+      // Include hours that are in the past but after the cutoff
+      if (forecastTime >= cutoffTime && forecastTime < now) {
+        total += hourlyData.snowfall[i] || 0;
+      }
+    }
+
+    return Math.round(total * 10) / 10;
+  }
+
+  /**
    * Get forecast data (uses same caching as current weather)
    */
   async getForecast() {
@@ -482,6 +503,7 @@ class WWOWeatherService {
       next_24h_snowfall: this.calculateSnowfallForHours(level.hourly, 24),
       next_48h_snowfall: this.calculateSnowfallForHours(level.hourly, 48),
       next_72h_snowfall: this.calculateSnowfallForHours(level.hourly, 72),
+      last_6h_snowfall: this.calculatePastSnowfall(level.hourly, 6),
       snowfall_6hourly: this.get6HourlySnowfall(level.hourly),
       daily_forecast: level.daily.time.map((date, index) => ({
         date,
