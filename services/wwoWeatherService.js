@@ -291,14 +291,14 @@ class WWOWeatherService {
   }
 
   /**
-   * Get current hour index in JST (WWO uses 0, 300, 600, etc for time)
+   * Get current hour index in JST
+   * WWO Ski API provides hourly data (0, 100, 200, ... 2300)
    */
   getCurrentHourIndex() {
     // Get current hour in JST (UTC+9) since WWO data is in JST
     const now = new Date();
     const jstHour = (now.getUTCHours() + 9) % 24;
-    // WWO hourly is every 3 hours: 0, 3, 6, 9, 12, 15, 18, 21
-    return Math.floor(jstHour / 3);
+    return jstHour;
   }
 
   /**
